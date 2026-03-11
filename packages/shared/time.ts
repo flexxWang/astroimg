@@ -1,0 +1,1 @@
+console.log('This file is used to share time-related utilities across the project.');
