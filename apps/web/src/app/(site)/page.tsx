@@ -1,17 +1,17 @@
 import Link from "next/link";
-import PostFeed from "@/components/PostFeed";
+import WorkFeed from "@/components/WorkFeed";
 import { Button } from "@/components/ui/button";
 import { serverFetch } from "@/lib/serverApi";
-import type { Paginated, PostListItem } from "@/lib/types";
+import type { Paginated, WorkItem } from "@/lib/types";
 
 export default async function HomePage() {
-  const result = await serverFetch<{ success: boolean; data: Paginated<PostListItem> }>(
-    "/posts?page=1&pageSize=10",
+  const result = await serverFetch<{ success: boolean; data: Paginated<WorkItem> }>(
+    "/works?page=1&pageSize=12",
   );
   const page = result.data ?? {
     items: [],
     page: 1,
-    pageSize: 10,
+    pageSize: 12,
     total: 0,
     hasMore: false,
   };
@@ -29,23 +29,26 @@ export default async function HomePage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-4">
-          <Link href="/post/create">
-            <Button>开始发布</Button>
+          <Link href="/work/create">
+            <Button>发布作品</Button>
           </Link>
           <Link href="/explore">
             <Button variant="secondary">探索社区</Button>
+          </Link>
+          <Link href="/post/create">
+            <Button variant="ghost">写帖子</Button>
           </Link>
         </div>
       </section>
 
       <section className="grid gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold">最新分享</h2>
-          <Link href="/explore" className="text-sm text-muted-foreground">
-            查看更多
-          </Link>
+          <h2 className="text-xl font-semibold">最新作品</h2>
+          <span className="text-sm text-muted-foreground">社区精选</span>
         </div>
-        <PostFeed initialPage={page} pageSize={10} />
+        <div className="rounded-3xl border bg-white/70 p-4 shadow-sm md:p-6">
+          <WorkFeed initialPage={page} pageSize={12} />
+        </div>
       </section>
     </div>
   );

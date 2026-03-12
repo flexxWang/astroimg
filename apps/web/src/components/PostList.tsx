@@ -18,7 +18,7 @@ export default function PostList() {
     return <div className="text-sm text-red-500">加载失败，请稍后重试。</div>;
   }
 
-  const posts = data?.data ?? [];
+  const posts = data?.data?.items ?? [];
 
   if (posts.length === 0) {
     return <div className="text-sm text-muted-foreground">还没有内容。</div>;
@@ -33,6 +33,7 @@ export default function PostList() {
           title={post.title}
           excerpt={post.content.slice(0, 80) + "..."}
           author={post.author?.username || post.authorId}
+          authorId={post.authorId}
           tag="观测日志"
         />
       ))}

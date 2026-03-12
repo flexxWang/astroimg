@@ -14,7 +14,8 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
           </Link>
           <nav className="flex items-center gap-6 text-sm text-muted-foreground">
             <Link href="/explore">探索</Link>
-            <Link href="/post/create">发布</Link>
+            <Link href="/work/create">发布作品</Link>
+            <Link href="/post/create">发帖子</Link>
             <Link href="/drafts">草稿箱</Link>
             <Link href="/messages">私信</Link>
             <UserProfileLink />

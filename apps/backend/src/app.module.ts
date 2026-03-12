@@ -19,6 +19,7 @@ import { MessageModule } from './modules/message/message.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { DraftModule } from './modules/draft/draft.module';
+import { WorkModule } from './modules/work/work.module';
 
 @Module({
   imports: [
@@ -69,6 +70,7 @@ import { DraftModule } from './modules/draft/draft.module';
     NotificationModule,
     UploadModule,
     DraftModule,
+    WorkModule,
   ],
   controllers: [AppController],
 })

@@ -37,3 +37,27 @@ export interface UserProfile {
     likes: number;
   };
 }
+
+export interface WorkType {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface WorkDevice {
+  id: string;
+  code: string;
+  name: string;
+}
+
+export interface WorkItem {
+  id: string;
+  title: string;
+  description?: string;
+  imageUrl: string;
+  createdAt?: string;
+  authorId: string;
+  author?: AuthorInfo;
+  type?: Pick<WorkType, "id" | "name">;
+  device?: Pick<WorkDevice, "id" | "name">;
+}
