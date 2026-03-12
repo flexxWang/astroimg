@@ -46,6 +46,12 @@ export class Work {
   @Column({ name: 'author_id' })
   authorId: string;
 
+  @Column({ name: 'like_count', default: 0 })
+  likeCount: number;
+
+  @Column({ name: 'comment_count', default: 0 })
+  commentCount: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 

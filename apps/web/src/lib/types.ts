@@ -60,4 +60,14 @@ export interface WorkItem {
   author?: AuthorInfo;
   type?: Pick<WorkType, "id" | "name">;
   device?: Pick<WorkDevice, "id" | "name">;
+  likeCount?: number;
+  commentCount?: number;
+}
+
+export interface WorkComment {
+  id: string;
+  authorId: string;
+  author?: AuthorInfo;
+  content: string;
+  createdAt?: string;
 }

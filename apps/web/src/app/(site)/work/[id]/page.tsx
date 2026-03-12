@@ -2,8 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import UserAvatar from "@/components/UserAvatar";
 import { Badge } from "@/components/ui/badge";
+import WorkLikeButton from "@/components/WorkLikeButton";
+import WorkCommentForm from "@/components/WorkCommentForm";
+import WorkCommentList from "@/components/WorkCommentList";
 import { serverFetch } from "@/lib/serverApi";
-import type { WorkItem } from "@/lib/types";
+import type { WorkComment, WorkItem } from "@/lib/types";
 
 export default async function WorkDetailPage({
   params,
@@ -14,12 +17,16 @@ export default async function WorkDetailPage({
   const result = await serverFetch<{ success: boolean; data: WorkItem }>(
     `/works/${id}`,
   );
+  const commentResult = await serverFetch<{ success: boolean; data: WorkComment[] }>(
+    `/works/${id}/comments`,
+  );
 
   if (!result?.data) {
     notFound();
   }
 
   const work = result.data;
+  const comments = commentResult.data ?? [];
 
   return (
     <div className="space-y-8">
@@ -48,6 +55,23 @@ export default async function WorkDetailPage({
           {work.description}
         </div>
       ) : null}
+
+      <div className="flex items-center gap-3">
+        <WorkLikeButton workId={work.id} initialCount={work.likeCount ?? 0} />
+        <span className="text-sm text-muted-foreground">
+          评论 {work.commentCount ?? comments.length}
+        </span>
+      </div>
+
+      <section className="space-y-4">
+        <h2 className="text-lg font-semibold">评论</h2>
+        <WorkCommentForm workId={id} />
+        {comments.length === 0 ? (
+          <div className="text-sm text-muted-foreground">暂无评论</div>
+        ) : (
+          <WorkCommentList comments={comments} />
+        )}
+      </section>
     </div>
   );
 }

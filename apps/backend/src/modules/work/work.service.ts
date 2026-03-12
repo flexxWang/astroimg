@@ -60,6 +60,8 @@ export class WorkService implements OnModuleInit {
       .addSelect('work.imageUrl', 'work_imageUrl')
       .addSelect('work.authorId', 'work_authorId')
       .addSelect('work.createdAt', 'work_createdAt')
+      .addSelect('work.likeCount', 'work_likeCount')
+      .addSelect('work.commentCount', 'work_commentCount')
       .addSelect('type.id', 'type_id')
       .addSelect('type.name', 'type_name')
       .addSelect('device.id', 'device_id')
@@ -77,6 +79,8 @@ export class WorkService implements OnModuleInit {
       imageUrl: row.work_imageUrl,
       createdAt: row.work_createdAt,
       authorId: row.work_authorId,
+      likeCount: row.work_likeCount,
+      commentCount: row.work_commentCount,
       author: row.author_id
         ? {
             id: row.author_id,

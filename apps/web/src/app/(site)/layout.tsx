@@ -14,8 +14,27 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
           </Link>
           <nav className="flex items-center gap-6 text-sm text-muted-foreground">
             <Link href="/explore">探索</Link>
-            <Link href="/work/create">发布作品</Link>
-            <Link href="/post/create">发帖子</Link>
+            <div className="group relative">
+              <button className="text-sm text-muted-foreground hover:text-foreground">
+                发布
+              </button>
+              <div className="pointer-events-none absolute left-1/2 top-full z-10 w-40 -translate-x-1/2 pt-3 opacity-0 transition group-hover:opacity-100 group-hover:pointer-events-auto">
+                <div className="rounded-xl border bg-white/95 p-2 shadow-lg">
+                <Link
+                  href="/work/create"
+                  className="block rounded-lg px-3 py-2 text-sm text-foreground hover:bg-slate-100"
+                >
+                  发布作品
+                </Link>
+                <Link
+                  href="/post/create"
+                  className="block rounded-lg px-3 py-2 text-sm text-foreground hover:bg-slate-100"
+                >
+                  发布帖子
+                </Link>
+                </div>
+              </div>
+            </div>
             <Link href="/drafts">草稿箱</Link>
             <Link href="/messages">私信</Link>
             <UserProfileLink />
