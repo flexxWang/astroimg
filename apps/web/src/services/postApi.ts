@@ -1,4 +1,5 @@
 import { apiFetch } from "@/services/api";
+import type { Paginated } from "@/lib/types";
 
 export interface AuthorInfo {
   id: string;
@@ -18,7 +19,13 @@ export interface PostListItem {
 }
 
 export function fetchPosts() {
-  return apiFetch<{ success: boolean; data: PostListItem[] }>("/posts");
+  return apiFetch<{ success: boolean; data: Paginated<PostListItem> }>("/posts");
+}
+
+export function fetchPostsPage(page = 1, pageSize = 20) {
+  return apiFetch<{ success: boolean; data: Paginated<PostListItem> }>(
+    `/posts?page=${page}&pageSize=${pageSize}`,
+  );
 }
 
 export function fetchPost(id: string) {
@@ -26,18 +33,14 @@ export function fetchPost(id: string) {
 }
 
 export function fetchPostsByUser(userId: string) {
-  return apiFetch<{ success: boolean; data: PostListItem[] }>(
+  return apiFetch<{ success: boolean; data: Paginated<PostListItem> }>(
     `/posts/user/${userId}`,
   );
 }
 
-export function createPost(
-  token: string,
-  payload: { title: string; content: string },
-) {
+export function createPost(payload: { title: string; content: string }) {
   return apiFetch<{ success: boolean; data: PostListItem }>("/posts", {
     method: "POST",
-    token,
     body: JSON.stringify(payload),
   });
 }

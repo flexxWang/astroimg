@@ -9,14 +9,14 @@ import { useUserStore } from "@/stores/userStore";
 
 export default function CommentForm({ postId }: { postId: string }) {
   const router = useRouter();
-  const token = useUserStore((state) => state.token);
+  const user = useUserStore((state) => state.user);
   const [content, setContent] = useState("");
   const maxLength = 300;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
-    if (!token) {
+    if (!user) {
       router.push("/login");
       return;
     }
@@ -26,7 +26,7 @@ export default function CommentForm({ postId }: { postId: string }) {
     setLoading(true);
     setError(null);
     try {
-      await createComment(token, postId, { content });
+      await createComment(postId, { content });
       setContent("");
       router.refresh();
     } catch (err) {

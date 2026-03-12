@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { register } from "@/services/userApi";
+import { fetchMe, register } from "@/services/userApi";
 import { useUserStore } from "@/stores/userStore";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const setToken = useUserStore((state) => state.setToken);
+  const setUser = useUserStore((state) => state.setUser);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,8 +20,9 @@ export default function RegisterPage() {
     event.preventDefault();
     setLoading(true);
     try {
-      const result = await register({ username, email, password });
-      setToken(result.data.accessToken);
+      await register({ username, email, password });
+      const me = await fetchMe();
+      setUser(me.data);
       router.push("/");
     } finally {
       setLoading(false);

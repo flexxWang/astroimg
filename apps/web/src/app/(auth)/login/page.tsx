@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { login } from "@/services/userApi";
+import { fetchMe, login } from "@/services/userApi";
 import { useUserStore } from "@/stores/userStore";
 
 export default function LoginPage() {
   const router = useRouter();
-  const setToken = useUserStore((state) => state.setToken);
+  const setUser = useUserStore((state) => state.setUser);
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -19,8 +19,9 @@ export default function LoginPage() {
     event.preventDefault();
     setLoading(true);
     try {
-      const result = await login({ usernameOrEmail, password });
-      setToken(result.data.accessToken);
+      await login({ usernameOrEmail, password });
+      const me = await fetchMe();
+      setUser(me.data);
       router.push("/");
     } finally {
       setLoading(false);

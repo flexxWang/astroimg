@@ -1,14 +1,20 @@
 import Link from "next/link";
-import PostCard from "@/components/PostCard";
+import PostFeed from "@/components/PostFeed";
 import { Button } from "@/components/ui/button";
 import { serverFetch } from "@/lib/serverApi";
-import type { PostListItem } from "@/lib/types";
+import type { Paginated, PostListItem } from "@/lib/types";
 
 export default async function HomePage() {
-  const result = await serverFetch<{ success: boolean; data: PostListItem[] }>(
-    "/posts",
+  const result = await serverFetch<{ success: boolean; data: Paginated<PostListItem> }>(
+    "/posts?page=1&pageSize=10",
   );
-  const posts = result.data ?? [];
+  const page = result.data ?? {
+    items: [],
+    page: 1,
+    pageSize: 10,
+    total: 0,
+    hasMore: false,
+  };
 
   return (
     <div className="space-y-10">
@@ -39,24 +45,7 @@ export default async function HomePage() {
             查看更多
           </Link>
         </div>
-        {posts.length === 0 ? (
-          <div className="text-sm text-muted-foreground">还没有内容。</div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {posts.map((post) => (
-              <PostCard
-                key={post.id}
-                id={post.id}
-                title={post.title}
-                excerpt={post.content}
-                author={post.author?.username || post.authorId}
-                tag="观测日志"
-                likeCount={post.likeCount}
-                commentCount={post.commentCount}
-              />
-            ))}
-          </div>
-        )}
+        <PostFeed initialPage={page} pageSize={10} />
       </section>
     </div>
   );

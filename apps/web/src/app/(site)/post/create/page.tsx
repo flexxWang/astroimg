@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/useToast";
 
 export default function CreatePostPage() {
   const router = useRouter();
-  const token = useUserStore((state) => state.token);
+  const user = useUserStore((state) => state.user);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,7 +36,7 @@ export default function CreatePostPage() {
   }, [title, content]);
 
   const handlePublish = async () => {
-    if (!token) {
+    if (!user) {
       router.push("/login");
       return;
     }
@@ -54,10 +54,10 @@ export default function CreatePostPage() {
     setLoading(true);
     try {
       if (draftId) {
-        const result = await publishDraft(token, draftId);
+        const result = await publishDraft(draftId);
         router.push(`/post/${result.data.id}`);
       } else {
-        const result = await createPost(token, { title, content });
+        const result = await createPost({ title, content });
         router.push(`/post/${result.data.id}`);
       }
     } catch (err) {
@@ -72,16 +72,16 @@ export default function CreatePostPage() {
   };
 
   const handleSaveDraft = async () => {
-    if (!token) {
+    if (!user) {
       router.push("/login");
       return;
     }
     setLoading(true);
     try {
       if (draftId) {
-        await updateDraft(token, draftId, { title, content });
+        await updateDraft(draftId, { title, content });
       } else {
-        const result = await createDraft(token, { title, content });
+        const result = await createDraft({ title, content });
         setDraftId(result.data.id);
       }
       lastSavedRef.current = { title, content };

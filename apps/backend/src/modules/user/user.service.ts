@@ -37,4 +37,14 @@ export class UserService {
     const user = this.userRepo.create(data);
     return this.userRepo.save(user);
   }
+
+  search(keyword?: string) {
+    if (!keyword) return [];
+    return this.userRepo
+      .createQueryBuilder('user')
+      .select(['user.id', 'user.username', 'user.avatarUrl'])
+      .where('user.username LIKE :keyword', { keyword: `%${keyword}%` })
+      .limit(10)
+      .getMany();
+  }
 }

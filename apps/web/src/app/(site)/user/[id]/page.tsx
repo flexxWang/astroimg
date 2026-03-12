@@ -2,7 +2,9 @@ import FollowButton from "@/components/FollowButton";
 import PostCard from "@/components/PostCard";
 import UserAvatar from "@/components/UserAvatar";
 import { serverFetch } from "@/lib/serverApi";
-import type { PostListItem, UserProfile } from "@/lib/types";
+import type { Paginated, PostListItem, UserProfile } from "@/lib/types";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export default async function UserProfilePage({
   params,
@@ -13,12 +15,12 @@ export default async function UserProfilePage({
   const userResult = await serverFetch<{ success: boolean; data: UserProfile }>(
     `/users/${id}`,
   );
-  const postsResult = await serverFetch<{ success: boolean; data: PostListItem[] }>(
-    `/posts/user/${id}`,
+  const postsResult = await serverFetch<{ success: boolean; data: Paginated<PostListItem> }>(
+    `/posts/user/${id}?page=1&pageSize=10`,
   );
 
   const user = userResult.data;
-  const posts = postsResult.data ?? [];
+  const posts = postsResult.data?.items ?? [];
 
   return (
     <div className="space-y-8">
@@ -30,7 +32,12 @@ export default async function UserProfilePage({
             {user?.bio || "这个人还没有填写简介"}
           </p>
         </div>
-        <FollowButton userId={id} />
+        <div className="flex items-center gap-2">
+          <FollowButton userId={id} />
+          <Link href={`/messages/new?to=${id}`}>
+            <Button variant="secondary" size="sm">私信</Button>
+          </Link>
+        </div>
       </section>
 
       <section className="space-y-4">

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import UserMenu from "@/components/UserMenu";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -14,9 +15,13 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
             <Link href="/explore">探索</Link>
             <Link href="/post/create">发布</Link>
             <Link href="/drafts">草稿箱</Link>
+            <Link href="/messages">私信</Link>
             <Link href="/user/astro">我的主页</Link>
           </nav>
-          <UserMenu />
+          <div className="flex items-center gap-4">
+            <NotificationBell />
+            <UserMenu />
+          </div>
         </div>
       </header>
       <main className="mx-auto w-full max-w-6xl px-6 py-10">{children}</main>

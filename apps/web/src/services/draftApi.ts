@@ -8,45 +8,36 @@ export interface DraftItem {
   updatedAt?: string;
 }
 
-export function fetchDrafts(token: string) {
-  return apiFetch<{ success: boolean; data: DraftItem[] }>("/drafts", { token });
+export function fetchDrafts() {
+  return apiFetch<{ success: boolean; data: DraftItem[] }>("/drafts", {});
 }
 
-export function fetchDraft(token: string, id: string) {
-  return apiFetch<{ success: boolean; data: DraftItem }>(`/drafts/${id}`, {
-    token,
-  });
+export function fetchDraft(id: string) {
+  return apiFetch<{ success: boolean; data: DraftItem }>(`/drafts/${id}`, {});
 }
 
-export function createDraft(
-  token: string,
-  payload: { title?: string; content?: string },
-) {
+export function createDraft(payload: { title?: string; content?: string }) {
   return apiFetch<{ success: boolean; data: DraftItem }>("/drafts", {
     method: "POST",
-    token,
     body: JSON.stringify(payload),
   });
 }
 
 export function updateDraft(
-  token: string,
   id: string,
   payload: { title?: string; content?: string },
 ) {
   return apiFetch<{ success: boolean; data: DraftItem }>(`/drafts/${id}`, {
     method: "PUT",
-    token,
     body: JSON.stringify(payload),
   });
 }
 
-export function publishDraft(token: string, id: string) {
+export function publishDraft(id: string) {
   return apiFetch<{ success: boolean; data: { id: string } }>(
     `/drafts/${id}/publish`,
     {
       method: "POST",
-      token,
     },
   );
 }

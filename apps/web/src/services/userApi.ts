@@ -24,11 +24,8 @@ export function login(payload: { usernameOrEmail: string; password: string }) {
   );
 }
 
-export function fetchMe(token: string) {
+export function fetchMe() {
   return apiFetch<{ success: boolean; data: { id: string; username: string } }>(
     "/users/me",
-    {
-      token,
-    },
   );
 }

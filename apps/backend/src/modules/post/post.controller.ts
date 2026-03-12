@@ -10,7 +10,9 @@ export class PostController {
 
   @Get()
   list(@Query('page') page = '1', @Query('pageSize') pageSize = '20') {
-    return this.postService.findAll(Number(page), Number(pageSize));
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const pageSizeNum = Math.min(Math.max(parseInt(pageSize, 10) || 10, 1), 50);
+    return this.postService.findAll(pageNum, pageSizeNum);
   }
 
   @Get('user/:userId')
@@ -19,7 +21,9 @@ export class PostController {
     @Query('page') page = '1',
     @Query('pageSize') pageSize = '20',
   ) {
-    return this.postService.findByAuthor(userId, Number(page), Number(pageSize));
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const pageSizeNum = Math.min(Math.max(parseInt(pageSize, 10) || 10, 1), 50);
+    return this.postService.findByAuthor(userId, pageNum, pageSizeNum);
   }
 
   @Get(':id')

@@ -5,29 +5,40 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { fetchFollowStatus, toggleFollow } from "@/services/followApi";
 import { useUserStore } from "@/stores/userStore";
+import { useToast } from "@/hooks/useToast";
 
 export default function FollowButton({ userId }: { userId: string }) {
   const router = useRouter();
-  const token = useUserStore((state) => state.token);
+  const user = useUserStore((state) => state.user);
+  const { toast, hasToast } = useToast();
   const [following, setFollowing] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  if (user && user.id === userId) {
+    return null;
+  }
+
   useEffect(() => {
-    if (!token) return;
-    fetchFollowStatus(token, userId)
+    if (!user) return;
+    fetchFollowStatus(userId)
       .then((result) => setFollowing(result.data.following))
       .catch(() => {});
-  }, [token, userId]);
+  }, [user, userId]);
 
   const handleToggle = async () => {
-    if (!token) {
+    if (!user) {
       router.push("/login");
       return;
     }
     setLoading(true);
     try {
-      const result = await toggleFollow(token, userId);
+      const result = await toggleFollow(userId);
       setFollowing(result.data.following);
+    } catch (err) {
+      const message = (err as Error).message || "关注失败";
+      if (!hasToast(message)) {
+        toast({ title: "关注失败", description: message, variant: "destructive" });
+      }
     } finally {
       setLoading(false);
     }

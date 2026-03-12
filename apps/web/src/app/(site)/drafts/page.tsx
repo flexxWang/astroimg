@@ -13,25 +13,25 @@ import { useToast } from "@/hooks/useToast";
 
 export default function DraftListPage() {
   const router = useRouter();
-  const token = useUserStore((state) => state.token);
+  const user = useUserStore((state) => state.user);
   const hydrated = useUserStore((state) => state.hydrated);
   const { toast } = useToast();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["drafts", token],
-    queryFn: () => fetchDrafts(token!),
-    enabled: Boolean(token),
+    queryKey: ["drafts", user?.id],
+    queryFn: () => fetchDrafts(),
+    enabled: Boolean(user),
     refetchOnMount: "always",
     refetchOnWindowFocus: true,
   });
 
   useEffect(() => {
-    if (hydrated && !token) {
+    if (hydrated && !user) {
       router.push("/login");
     }
-  }, [hydrated, router, token]);
+  }, [hydrated, router, user]);
 
-  if (!hydrated || !token) {
+  if (!hydrated || !user) {
     return null;
   }
 
@@ -39,7 +39,7 @@ export default function DraftListPage() {
 
   const handlePublish = async (id: string) => {
     try {
-      const result = await publishDraft(token, id);
+      const result = await publishDraft(id);
       router.push(`/post/${result.data.id}`);
     } catch (err) {
       toast({

@@ -13,16 +13,11 @@ export function fetchComments(postId: string) {
   );
 }
 
-export function createComment(
-  token: string,
-  postId: string,
-  payload: { content: string },
-) {
+export function createComment(postId: string, payload: { content: string }) {
   return apiFetch<{ success: boolean; data: CommentItem }>(
     `/posts/${postId}/comments`,
     {
       method: "POST",
-      token,
       body: JSON.stringify(payload),
     },
   );

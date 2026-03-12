@@ -14,26 +14,26 @@ export default function LikeButton({
   initialCount?: number;
 }) {
   const router = useRouter();
-  const token = useUserStore((state) => state.token);
+  const user = useUserStore((state) => state.user);
   const [liked, setLiked] = useState(false);
   const [count, setCount] = useState(initialCount);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!token) return;
-    fetchLikeStatus(token, postId).then((result) => {
+    if (!user) return;
+    fetchLikeStatus(postId).then((result) => {
       setLiked(result.data.liked);
     }).catch(() => {});
-  }, [postId, token]);
+  }, [postId, user]);
 
   const handleToggle = async () => {
-    if (!token) {
+    if (!user) {
       router.push("/login");
       return;
     }
     setLoading(true);
     try {
-      const result = await toggleLike(token, postId);
+      const result = await toggleLike(postId);
       setLiked(result.data.liked);
       setCount(result.data.likeCount);
     } finally {

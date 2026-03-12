@@ -5,10 +5,12 @@ import FollowButton from "@/components/FollowButton";
 import LikeButton from "@/components/LikeButton";
 import UserAvatar from "@/components/UserAvatar";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { serverFetch } from "@/lib/serverApi";
 import { sanitizeHtml } from "@/lib/sanitize";
 import type { CommentItem } from "@/components/CommentList";
 import type { PostListItem } from "@/lib/types";
+import Link from "next/link";
 
 export default async function PostDetailPage({
   params,
@@ -49,7 +51,12 @@ export default async function PostDetailPage({
               </div>
             </div>
           </div>
-          <FollowButton userId={post.authorId} />
+          <div className="flex items-center gap-2">
+            <FollowButton userId={post.authorId} />
+            <Link href={`/messages/new?to=${post.authorId}`}>
+              <Button variant="secondary" size="sm">私信</Button>
+            </Link>
+          </div>
         </div>
       </div>
 

@@ -1,7 +1,8 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
 import { UserService } from './user.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { SearchUserDto } from './dto/search-user.dto';
 
 @Controller('users')
 export class UserController {
@@ -16,5 +17,10 @@ export class UserController {
   @Get(':id')
   findById(@Param('id') id: string) {
     return this.userService.findByIdPublic(id);
+  }
+
+  @Get()
+  search(@Query() dto: SearchUserDto) {
+    return this.userService.search(dto.keyword);
   }
 }

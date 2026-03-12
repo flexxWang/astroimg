@@ -32,7 +32,7 @@ export default function PostList() {
           id={post.id}
           title={post.title}
           excerpt={post.content.slice(0, 80) + "..."}
-          author={post.authorId}
+          author={post.author?.username || post.authorId}
           tag="观测日志"
         />
       ))}

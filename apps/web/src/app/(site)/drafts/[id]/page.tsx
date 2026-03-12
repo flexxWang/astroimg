@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/useToast";
 export default function DraftEditPage() {
   const params = useParams();
   const router = useRouter();
-  const token = useUserStore((state) => state.token);
+  const user = useUserStore((state) => state.user);
   const { toast, hasToast } = useToast();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -21,8 +21,8 @@ export default function DraftEditPage() {
   const draftId = params.id as string;
 
   useEffect(() => {
-    if (!token) return;
-    fetchDraft(token, draftId)
+    if (!user) return;
+    fetchDraft(draftId)
       .then((result) => {
         setTitle(result.data.title || "");
         setContent(result.data.content || "");
@@ -34,16 +34,16 @@ export default function DraftEditPage() {
           variant: "destructive",
         });
       });
-  }, [draftId, token, toast]);
+  }, [draftId, user, toast]);
 
   const handleSave = async () => {
-    if (!token) {
+    if (!user) {
       router.push("/login");
       return;
     }
     setLoading(true);
     try {
-      await updateDraft(token, draftId, { title, content });
+      await updateDraft(draftId, { title, content });
       toast({ title: "草稿已保存" });
     } catch (err) {
       toast({
@@ -57,7 +57,7 @@ export default function DraftEditPage() {
   };
 
   const handlePublish = async () => {
-    if (!token) {
+    if (!user) {
       router.push("/login");
       return;
     }
@@ -73,7 +73,7 @@ export default function DraftEditPage() {
     }
     setLoading(true);
     try {
-      const result = await publishDraft(token, draftId);
+      const result = await publishDraft(draftId);
       router.push(`/post/${result.data.id}`);
     } catch (err) {
       toast({

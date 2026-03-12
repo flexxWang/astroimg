@@ -15,6 +15,14 @@ export interface PostListItem {
   commentCount?: number;
 }
 
+export interface Paginated<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  total: number;
+  hasMore: boolean;
+}
+
 export interface UserProfile {
   id: string;
   username: string;
