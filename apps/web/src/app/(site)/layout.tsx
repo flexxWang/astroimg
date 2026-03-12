@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import UserMenu from "@/components/UserMenu";
 import NotificationBell from "@/components/NotificationBell";
+import UserProfileLink from "@/components/UserProfileLink";
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -16,7 +17,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
             <Link href="/post/create">发布</Link>
             <Link href="/drafts">草稿箱</Link>
             <Link href="/messages">私信</Link>
-            <Link href="/user/astro">我的主页</Link>
+            <UserProfileLink />
           </nav>
           <div className="flex items-center gap-4">
             <NotificationBell />

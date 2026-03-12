@@ -55,14 +55,21 @@ export class PostService {
     return this.postRepo.save(post);
   }
 
-  async findAll(page = 1, pageSize = 20) {
+  private applyKeyword(qb: ReturnType<PostService['baseQuery']>, keyword?: string) {
+    if (!keyword) return qb;
+    return qb.andWhere('(post.title LIKE :keyword OR post.content LIKE :keyword)', {
+      keyword: `%${keyword}%`,
+    });
+  }
+
+  async findAll(page = 1, pageSize = 20, keyword?: string) {
     const [rows, total] = await Promise.all([
-      this.baseQuery()
+      this.applyKeyword(this.baseQuery(), keyword)
         .orderBy('post.createdAt', 'DESC')
         .offset((page - 1) * pageSize)
         .limit(pageSize)
         .getRawMany(),
-      this.postRepo.count(),
+      this.applyKeyword(this.postRepo.createQueryBuilder('post'), keyword).getCount(),
     ]);
     const items = rows.map((row) => this.mapPost(row));
     return {

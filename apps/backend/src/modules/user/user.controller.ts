@@ -11,12 +11,12 @@ export class UserController {
   @UseGuards(JwtAuthGuard)
   @Get('me')
   me(@CurrentUser() user: { id: string }) {
-    return this.userService.findByIdPublic(user.id);
+    return this.userService.findProfile(user.id);
   }
 
   @Get(':id')
   findById(@Param('id') id: string) {
-    return this.userService.findByIdPublic(id);
+    return this.userService.findProfile(id);
   }
 
   @Get()

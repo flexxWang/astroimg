@@ -3,23 +3,28 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import PostCard from "@/components/PostCard";
-import { fetchPostsPage, type PostListItem } from "@/services/postApi";
+import { fetchPostsByUserPage, fetchPostsPage, type PostListItem } from "@/services/postApi";
 import type { Paginated } from "@/lib/types";
 
 interface PostFeedProps {
   initialPage: Paginated<PostListItem>;
   pageSize?: number;
   emptyText?: string;
+  keyword?: string;
+  userId?: string;
 }
 
 export default function PostFeed({
   initialPage,
   pageSize = 10,
   emptyText = "还没有内容。",
+  keyword,
+  userId,
 }: PostFeedProps) {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const fetchingRef = useRef(false);
 
+  const isUserFeed = Boolean(userId);
   const {
     data,
     fetchNextPage,
@@ -27,9 +32,15 @@ export default function PostFeed({
     isFetchingNextPage,
     isFetching,
   } = useInfiniteQuery({
-    queryKey: ["posts", "feed", pageSize],
-    queryFn: ({ pageParam = 1 }) =>
-      fetchPostsPage(pageParam, pageSize).then((res) => res.data),
+    queryKey: ["posts", "feed", userId ?? "all", pageSize, keyword ?? ""],
+    queryFn: ({ pageParam = 1 }) => {
+      if (isUserFeed && userId) {
+        return fetchPostsByUserPage(userId, pageParam, pageSize).then(
+          (res) => res.data,
+        );
+      }
+      return fetchPostsPage(pageParam, pageSize, keyword).then((res) => res.data);
+    },
     initialData: {
       pages: [initialPage],
       pageParams: [1],
@@ -88,9 +99,11 @@ export default function PostFeed({
             title={post.title}
             excerpt={post.content}
             author={post.author?.username || post.authorId}
+            authorId={post.authorId}
             tag="观测日志"
             likeCount={post.likeCount}
             commentCount={post.commentCount}
+            highlight={keyword}
           />
         ))}
       </div>

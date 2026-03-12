@@ -53,7 +53,7 @@ export default async function PostDetailPage({
           </div>
           <div className="flex items-center gap-2">
             <FollowButton userId={post.authorId} />
-            <Link href={`/messages/new?to=${post.authorId}`}>
+            <Link href={`/messages?to=${post.authorId}`}>
               <Button variant="secondary" size="sm">私信</Button>
             </Link>
           </div>

@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { fetchConversations, markConversationRead, searchMessages, sendMessage } from "@/services/messageApi";
 import { searchUsers } from "@/services/userSearchApi";
 import { useUserStore } from "@/stores/userStore";
@@ -15,6 +15,7 @@ import { useInfiniteMessages } from "@/hooks/useInfiniteMessages";
 
 export default function MessagesPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const user = useUserStore((state) => state.user);
   const hydrated = useUserStore((state) => state.hydrated);
   const queryClient = useQueryClient();
@@ -24,7 +25,9 @@ export default function MessagesPage() {
   const [search, setSearch] = useState("");
   const [content, setContent] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [messageSearch, setMessageSearch] = useState("");
+  const [debouncedMessageSearch, setDebouncedMessageSearch] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const pendingScrollRef = useRef(false);
@@ -44,6 +47,14 @@ export default function MessagesPage() {
     }
   }, [hydrated, router, user]);
 
+  useEffect(() => {
+    const target = searchParams.get("to");
+    if (target) {
+      setRecipientOverride(target);
+      setActiveId(null);
+    }
+  }, [searchParams]);
+
   const { data: convData, refetch: refetchConversations } = useQuery({
     queryKey: ["conversations"],
     queryFn: () => fetchConversations(),
@@ -53,10 +64,26 @@ export default function MessagesPage() {
   const conversations = convData?.data ?? [];
 
   useEffect(() => {
+    if (recipientOverride) return;
     if (!activeId && conversations.length > 0) {
       setActiveId(conversations[0].id);
     }
-  }, [activeId, conversations]);
+  }, [activeId, conversations, recipientOverride]);
+
+  useEffect(() => {
+    if (!recipientOverride || conversations.length === 0) return;
+    const matched = conversations.find(
+      (c) => c.otherUserId === recipientOverride,
+    );
+    if (!matched) return;
+    if (activeId && matched.id !== activeId) {
+      setRecipientOverride(null);
+      return;
+    }
+    if (!activeId) {
+      setActiveId(matched.id);
+    }
+  }, [activeId, conversations, recipientOverride]);
 
   const activeConversation = useMemo(
     () => conversations.find((c) => c.id === activeId) || null,
@@ -104,14 +131,14 @@ export default function MessagesPage() {
   }, [activeId, refetchConversations, user]);
 
   useEffect(() => {
-    if (messageSearch.length > 0) return;
+    if (debouncedMessageSearch.length > 0) return;
     const el = scrollRef.current;
     if (!el) return;
     const distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     if (distanceToBottom < 200) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messagesList.length, messageSearch]);
+  }, [debouncedMessageSearch, messagesList.length]);
 
   useEffect(() => {
     if (!activeId) return;
@@ -137,15 +164,15 @@ export default function MessagesPage() {
   }, [activeId, loading, messagesList.length]);
 
   const { data: searchMsgData } = useQuery({
-    queryKey: ["messages-search", activeId, messageSearch],
-    queryFn: () => searchMessages(activeId!, messageSearch),
-    enabled: Boolean(activeId && messageSearch.length > 0),
+    queryKey: ["messages-search", activeId, debouncedMessageSearch],
+    queryFn: () => searchMessages(activeId!, debouncedMessageSearch),
+    enabled: Boolean(activeId && debouncedMessageSearch.length > 0),
   });
 
   const { data: searchData } = useQuery({
-    queryKey: ["user-search", search],
-    queryFn: () => searchUsers(search),
-    enabled: search.length > 0,
+    queryKey: ["user-search", debouncedSearch],
+    queryFn: () => searchUsers(debouncedSearch),
+    enabled: debouncedSearch.length > 0,
   });
 
   if (!hydrated || !user) return null;
@@ -172,6 +199,13 @@ export default function MessagesPage() {
     }
   };
 
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 400);
+    return () => window.clearTimeout(handle);
+  }, [search]);
+
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -185,6 +219,13 @@ export default function MessagesPage() {
     setSearch("");
     setSearchOpen(false);
   };
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setDebouncedMessageSearch(messageSearch.trim());
+    }, 400);
+    return () => window.clearTimeout(handle);
+  }, [messageSearch]);
 
   const handleLoadMore = async () => {
     const el = scrollRef.current;
@@ -235,7 +276,10 @@ export default function MessagesPage() {
                 key={c.id}
                 className={`w-full rounded-xl px-3 py-2 text-left ${c.id === activeId ? "bg-slate-100" : "hover:bg-slate-50"
                   }`}
-                onClick={() => setActiveId(c.id)}
+                onClick={() => {
+                  setRecipientOverride(null);
+                  setActiveId(c.id);
+                }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm font-medium">
@@ -266,26 +310,26 @@ export default function MessagesPage() {
               : recipientOverride
                 ? "新会话"
                 : "选择会话"}
-            {activeConversation ? (
-              <Input
-                placeholder="搜索消息"
-                value={messageSearch}
-                onChange={(e) => setMessageSearch(e.target.value)}
-                className="max-w-[200px]"
-              />
-            ) : null}
+          {activeConversation ? (
+            <Input
+              placeholder="搜索消息"
+              value={messageSearch}
+              onChange={(e) => setMessageSearch(e.target.value)}
+              className="max-w-[200px]"
+            />
+          ) : null}
           </div>
           <div
             ref={scrollRef}
             className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3"
-            onScroll={() => {
-              const el = scrollRef.current;
-              if (!el || messageSearch.length > 0) return;
-              if (el.scrollTop === 0 && hasMore) {
-                handleLoadMore();
-              }
-            }}
-          >
+          onScroll={() => {
+            const el = scrollRef.current;
+            if (!el || debouncedMessageSearch.length > 0) return;
+            if (el.scrollTop === 0 && hasMore) {
+              handleLoadMore();
+            }
+          }}
+        >
             {loadingMore ? (
               <div className="text-center text-xs text-muted-foreground">
                 加载中...
@@ -296,8 +340,8 @@ export default function MessagesPage() {
                 没有更多了
               </div>
             ) : null}
-            {(messageSearch.length > 0 ? (searchMsgData?.data ?? []) : messagesList).map(
-              (msg, index, list) => {
+          {(debouncedMessageSearch.length > 0 ? (searchMsgData?.data ?? []) : messagesList).map(
+            (msg, index, list) => {
                 const formatDate = (date: Date) => {
                   const now = new Date();
                   const diffMs = now.getTime() - date.getTime();
@@ -356,9 +400,9 @@ export default function MessagesPage() {
                 );
               },
             )}
-            {(messageSearch.length > 0 ? (searchMsgData?.data ?? []).length === 0 : messagesList.length === 0) ? (
-              <div className="text-sm text-muted-foreground">暂无消息</div>
-            ) : null}
+          {(debouncedMessageSearch.length > 0 ? (searchMsgData?.data ?? []).length === 0 : messagesList.length === 0) ? (
+            <div className="text-sm text-muted-foreground">暂无消息</div>
+          ) : null}
             <div ref={bottomRef} />
           </div>
           <div className="border-t p-4">

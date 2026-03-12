@@ -30,4 +30,10 @@ export interface UserProfile {
   avatarUrl?: string;
   bio?: string;
   createdAt?: string;
+  stats?: {
+    posts: number;
+    followers: number;
+    following: number;
+    likes: number;
+  };
 }

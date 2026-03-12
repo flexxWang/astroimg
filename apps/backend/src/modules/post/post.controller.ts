@@ -9,10 +9,14 @@ export class PostController {
   constructor(private readonly postService: PostService) {}
 
   @Get()
-  list(@Query('page') page = '1', @Query('pageSize') pageSize = '20') {
+  list(
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '20',
+    @Query('keyword') keyword = '',
+  ) {
     const pageNum = Math.max(parseInt(page, 10) || 1, 1);
     const pageSizeNum = Math.min(Math.max(parseInt(pageSize, 10) || 10, 1), 50);
-    return this.postService.findAll(pageNum, pageSizeNum);
+    return this.postService.findAll(pageNum, pageSizeNum, keyword.trim());
   }
 
   @Get('user/:userId')

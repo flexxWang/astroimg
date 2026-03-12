@@ -13,10 +13,12 @@ export default function PostEditor({
   onChange,
   value,
   placeholder = "写下你的观测与思考...",
+  className,
 }: {
   onChange?: (value: string) => void;
   value?: string;
   placeholder?: string;
+  className?: string;
 }) {
   const editor = useEditor({
     extensions: [
@@ -49,7 +51,7 @@ export default function PostEditor({
   const isOver = charCount > MAX_CHARS;
 
   return (
-    <div className="rounded-lg border bg-white/70 shadow-sm">
+    <div className={`flex h-full min-h-0 flex-col rounded-lg border bg-white/70 shadow-sm ${className ?? ""}`}>
       <div className="flex flex-wrap items-center gap-2 border-b bg-white/80 px-3 py-2">
         <Button
           type="button"
@@ -94,7 +96,10 @@ export default function PostEditor({
           引用
         </Button>
       </div>
-      <EditorContent editor={editor} className="min-h-48 px-4 py-3" />
+      <EditorContent
+        editor={editor}
+        className="flex-1 overflow-y-auto px-4 py-3 [&_.ProseMirror]:min-h-full [&_.ProseMirror]:outline-none"
+      />
       <div className="flex items-center justify-end border-t px-3 py-2 text-xs text-muted-foreground">
         <span className={isOver ? "text-red-500" : undefined}>
           {charCount}/{MAX_CHARS}

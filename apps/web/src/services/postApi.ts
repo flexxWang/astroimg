@@ -22,9 +22,10 @@ export function fetchPosts() {
   return apiFetch<{ success: boolean; data: Paginated<PostListItem> }>("/posts");
 }
 
-export function fetchPostsPage(page = 1, pageSize = 20) {
+export function fetchPostsPage(page = 1, pageSize = 20, keyword?: string) {
+  const keywordParam = keyword ? `&keyword=${encodeURIComponent(keyword)}` : "";
   return apiFetch<{ success: boolean; data: Paginated<PostListItem> }>(
-    `/posts?page=${page}&pageSize=${pageSize}`,
+    `/posts?page=${page}&pageSize=${pageSize}${keywordParam}`,
   );
 }
 
@@ -35,6 +36,16 @@ export function fetchPost(id: string) {
 export function fetchPostsByUser(userId: string) {
   return apiFetch<{ success: boolean; data: Paginated<PostListItem> }>(
     `/posts/user/${userId}`,
+  );
+}
+
+export function fetchPostsByUserPage(
+  userId: string,
+  page = 1,
+  pageSize = 20,
+) {
+  return apiFetch<{ success: boolean; data: Paginated<PostListItem> }>(
+    `/posts/user/${userId}?page=${page}&pageSize=${pageSize}`,
   );
 }
 

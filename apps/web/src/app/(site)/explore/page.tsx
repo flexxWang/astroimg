@@ -1,11 +1,20 @@
 import PostFeed from "@/components/PostFeed";
-import { Input } from "@/components/ui/input";
+import ExploreSearch from "@/components/ExploreSearch";
 import { serverFetch } from "@/lib/serverApi";
 import type { Paginated, PostListItem } from "@/lib/types";
 
-export default async function ExplorePage() {
+export default async function ExplorePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
+  const keyword = typeof q === "string" ? q : "";
+  const query = keyword
+    ? `/posts?page=1&pageSize=10&keyword=${encodeURIComponent(keyword)}`
+    : "/posts?page=1&pageSize=10";
   const result = await serverFetch<{ success: boolean; data: Paginated<PostListItem> }>(
-    "/posts?page=1&pageSize=10",
+    query,
   );
   const page = result.data ?? {
     items: [],
@@ -19,9 +28,9 @@ export default async function ExplorePage() {
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-2xl font-semibold">探索社区</h1>
-        <Input placeholder="搜索主题、设备或观测目标" className="max-w-sm" />
+        <ExploreSearch />
       </div>
-      <PostFeed initialPage={page} pageSize={10} />
+      <PostFeed initialPage={page} pageSize={10} keyword={keyword} emptyText="没有匹配内容。" />
     </div>
   );
 }

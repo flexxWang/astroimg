@@ -98,18 +98,20 @@ export default function CreatePostPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex h-[calc(100vh-144px)] flex-col space-y-6">
       <div className="space-y-2">
         <Badge variant="secondary">发布新帖</Badge>
         <h1 className="text-2xl font-semibold">写下你的观测与影像</h1>
       </div>
-      <div className="space-y-4 rounded-2xl border bg-white/80 p-6 shadow-sm">
+      <div className="flex h-full flex-1 flex-col space-y-4 rounded-2xl border bg-white/80 p-6 shadow-sm min-h-0">
         <Input
           placeholder="标题"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
         />
-        <PostEditor onChange={setContent} value={content} />
+        <div className="flex-1 min-h-0">
+          <PostEditor onChange={setContent} value={content} className="h-full min-h-0" />
+        </div>
         <div className="flex justify-end gap-3">
           <Button type="button" variant="secondary" onClick={handleSaveDraft}>
             保存草稿
