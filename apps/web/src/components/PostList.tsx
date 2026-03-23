@@ -35,6 +35,7 @@ export default function PostList() {
           author={post.author?.username || post.authorId}
           authorId={post.authorId}
           tag="观测日志"
+          createdAt={post.createdAt}
         />
       ))}
     </div>

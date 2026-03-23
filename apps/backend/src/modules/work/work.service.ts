@@ -40,11 +40,15 @@ export class WorkService implements OnModuleInit {
   async onModuleInit() {
     const typeCount = await this.typeRepo.count();
     if (typeCount === 0) {
-      await this.typeRepo.save(DEFAULT_TYPES.map((item) => this.typeRepo.create(item)));
+      await this.typeRepo.save(
+        DEFAULT_TYPES.map((item) => this.typeRepo.create(item)),
+      );
     }
     const deviceCount = await this.deviceRepo.count();
     if (deviceCount === 0) {
-      await this.deviceRepo.save(DEFAULT_DEVICES.map((item) => this.deviceRepo.create(item)));
+      await this.deviceRepo.save(
+        DEFAULT_DEVICES.map((item) => this.deviceRepo.create(item)),
+      );
     }
   }
 
@@ -58,6 +62,8 @@ export class WorkService implements OnModuleInit {
       .addSelect('work.title', 'work_title')
       .addSelect('work.description', 'work_description')
       .addSelect('work.imageUrl', 'work_imageUrl')
+      .addSelect('work.imageUrls', 'work_imageUrls')
+      .addSelect('work.videoUrl', 'work_videoUrl')
       .addSelect('work.authorId', 'work_authorId')
       .addSelect('work.createdAt', 'work_createdAt')
       .addSelect('work.likeCount', 'work_likeCount')
@@ -72,11 +78,39 @@ export class WorkService implements OnModuleInit {
   }
 
   private mapWork(row: any) {
+    let parsedImages: string[] = [];
+    if (row.work_image_urls && Array.isArray(row.work_image_urls)) {
+      parsedImages = row.work_image_urls;
+    } else if (row.work_imageUrls && Array.isArray(row.work_imageUrls)) {
+      parsedImages = row.work_imageUrls;
+    } else if (typeof row.work_imageUrls === "string") {
+      try {
+        const value = JSON.parse(row.work_imageUrls);
+        if (Array.isArray(value)) parsedImages = value;
+      } catch {
+        parsedImages = [];
+      }
+    } else if (typeof row.work_image_urls === "string") {
+      try {
+        const value = JSON.parse(row.work_image_urls);
+        if (Array.isArray(value)) parsedImages = value;
+      } catch {
+        parsedImages = [];
+      }
+    }
+    const imageUrls =
+      parsedImages.length > 0
+        ? parsedImages
+        : row.work_imageUrl
+          ? [row.work_imageUrl]
+          : [];
     return {
       id: row.work_id,
       title: row.work_title,
       description: row.work_description,
       imageUrl: row.work_imageUrl,
+      imageUrls,
+      videoUrl: row.work_videoUrl,
       createdAt: row.work_createdAt,
       authorId: row.work_authorId,
       likeCount: row.work_likeCount,
@@ -89,7 +123,9 @@ export class WorkService implements OnModuleInit {
           }
         : undefined,
       type: row.type_id ? { id: row.type_id, name: row.type_name } : undefined,
-      device: row.device_id ? { id: row.device_id, name: row.device_name } : undefined,
+      device: row.device_id
+        ? { id: row.device_id, name: row.device_name }
+        : undefined,
     };
   }
 
@@ -133,8 +169,8 @@ export class WorkService implements OnModuleInit {
   }
 
   async create(authorId: string, dto: CreateWorkDto) {
-    let typeId = dto.typeId;
-    let deviceId = dto.deviceId;
+    const typeId = dto.typeId;
+    const deviceId = dto.deviceId;
 
     if (typeId) {
       const exists = await this.typeRepo.findOne({ where: { id: typeId } });
@@ -150,10 +186,29 @@ export class WorkService implements OnModuleInit {
       }
     }
 
+    if (dto.mediaType === 'image') {
+      if (!dto.imageUrls?.length) {
+        throw new BadRequestException('作品图片不能为空');
+      }
+      if (dto.videoUrl) {
+        throw new BadRequestException('图片作品不能包含视频');
+      }
+    }
+    if (dto.mediaType === 'video') {
+      if (!dto.videoUrl) {
+        throw new BadRequestException('作品视频不能为空');
+      }
+      if (dto.imageUrls?.length) {
+        throw new BadRequestException('视频作品不能包含图片');
+      }
+    }
+
     const work = this.workRepo.create({
       title: dto.title,
       description: dto.description,
-      imageUrl: dto.imageUrl,
+      imageUrl: dto.imageUrls?.[0],
+      imageUrls: dto.imageUrls,
+      videoUrl: dto.videoUrl,
       authorId,
       typeId,
       deviceId,

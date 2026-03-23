@@ -20,7 +20,9 @@ export default function CreateWorkPage() {
   const [description, setDescription] = useState("");
   const [typeId, setTypeId] = useState("");
   const [deviceId, setDeviceId] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
+  const [mediaType, setMediaType] = useState<"image" | "video" | null>(null);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [videoUrl, setVideoUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const [publishing, setPublishing] = useState(false);
 
@@ -36,23 +38,128 @@ export default function CreateWorkPage() {
   const types = typesData?.data ?? [];
   const devices = devicesData?.data ?? [];
 
-  const canPublish = useMemo(
-    () => Boolean(title.trim() && imageUrl && typeId && deviceId),
-    [deviceId, imageUrl, title, typeId],
-  );
+  const canPublish = useMemo(() => {
+    if (!title.trim() || !typeId || !deviceId) return false;
+    if (mediaType === "image") return imageUrls.length > 0;
+    if (mediaType === "video") return Boolean(videoUrl);
+    return false;
+  }, [deviceId, imageUrls.length, mediaType, title, typeId, videoUrl]);
 
-  const handleSelectFile = async (file?: File | null) => {
-    if (!file) return;
+  const validateVideoDuration = async (file: File) => {
+    const url = URL.createObjectURL(file);
+    try {
+      const duration = await new Promise<number>((resolve, reject) => {
+        const video = document.createElement("video");
+        video.preload = "metadata";
+        video.onloadedmetadata = () => resolve(video.duration);
+        video.onerror = () => reject(new Error("无法读取视频时长"));
+        video.src = url;
+      });
+      if (duration > 30) {
+        throw new Error("视频时长不能超过 30 秒");
+      }
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  const handleSelectFiles = async (files?: FileList | null) => {
+    if (!files || files.length === 0) return;
     if (!user) {
       router.push("/login");
       return;
     }
+    const list = Array.from(files);
+    const first = list[0];
+    const isVideo = first.type.startsWith("video/");
+    const nextType: "image" | "video" = isVideo ? "video" : "image";
+
+    if (mediaType && mediaType !== nextType) {
+      toast({
+        title: "不能混合上传",
+        description: "图片与视频不能混合上传，请先清空再选择。",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (nextType === "image") {
+      const allowed = ["image/jpeg", "image/png", "image/webp"];
+      const validFiles = list.filter((file) => allowed.includes(file.type));
+      if (validFiles.length === 0) {
+        toast({
+          title: "格式不支持",
+          description: "仅支持 jpg / jpeg / png / webp。",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (imageUrls.length + validFiles.length > 9) {
+        toast({
+          title: "图片数量过多",
+          description: "最多上传 9 张图片。",
+          variant: "destructive",
+        });
+        return;
+      }
+      setUploading(true);
+      setMediaType("image");
+      try {
+        const uploaded: string[] = [];
+        for (const file of validFiles) {
+          const sign = await signUpload(file.name, file.type);
+          await uploadFile(sign.data.uploadUrl, file);
+          uploaded.push(sign.data.fileUrl);
+        }
+        setImageUrls((prev) => [...prev, ...uploaded]);
+        toast({ title: "图片已上传" });
+      } catch (err) {
+        toast({
+          title: "上传失败",
+          description: (err as Error).message,
+          variant: "destructive",
+        });
+      } finally {
+        setUploading(false);
+      }
+      return;
+    }
+
+    // video
+    if (list.length > 1) {
+      toast({
+        title: "只能上传一个视频",
+        description: "视频作品仅支持 1 个文件。",
+        variant: "destructive",
+      });
+      return;
+    }
+    const file = list[0];
+    const allowedVideo = ["video/mp4", "video/quicktime"];
+    if (!allowedVideo.includes(file.type)) {
+      toast({
+        title: "格式不支持",
+        description: "仅支持 mp4 / mov。",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (file.size > 1024 * 1024 * 1024) {
+      toast({
+        title: "视频过大",
+        description: "视频大小不能超过 1GB。",
+        variant: "destructive",
+      });
+      return;
+    }
     setUploading(true);
+    setMediaType("video");
     try {
+      await validateVideoDuration(file);
       const sign = await signUpload(file.name, file.type);
       await uploadFile(sign.data.uploadUrl, file);
-      setImageUrl(sign.data.fileUrl);
-      toast({ title: "作品图已上传" });
+      setVideoUrl(sign.data.fileUrl);
+      toast({ title: "视频已上传" });
     } catch (err) {
       toast({
         title: "上传失败",
@@ -84,7 +191,9 @@ export default function CreateWorkPage() {
       await createWork({
         title: title.trim(),
         description: description.trim() || undefined,
-        imageUrl,
+        mediaType: mediaType ?? "image",
+        imageUrls: mediaType === "image" ? imageUrls : undefined,
+        videoUrl: mediaType === "video" ? videoUrl : undefined,
         typeId,
         deviceId,
       });
@@ -106,7 +215,7 @@ export default function CreateWorkPage() {
         <Badge variant="secondary">发布作品</Badge>
         <h1 className="text-2xl font-semibold">展示你的星空影像</h1>
         <p className="text-sm text-muted-foreground">
-          作品图会展示在首页瀑布流，建议上传清晰的 JPG/PNG。
+          支持图片（最多 9 张）或视频（单个 ≤1GB，≤30 秒），不可混合上传。
         </p>
       </div>
       <div className="flex h-full flex-1 flex-col space-y-4 rounded-2xl border bg-white/80 p-6 shadow-sm min-h-0">
@@ -156,30 +265,88 @@ export default function CreateWorkPage() {
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm text-muted-foreground">作品图</label>
-          {imageUrl ? (
+          <label className="text-sm text-muted-foreground">作品媒体</label>
+          {mediaType === "video" && videoUrl ? (
             <div className="relative overflow-hidden rounded-2xl border">
-              <img src={imageUrl} alt="作品预览" className="h-[360px] w-full object-cover" />
+              <video src={videoUrl} controls className="h-[360px] w-full object-cover" />
               <Button
                 type="button"
                 variant="secondary"
                 size="sm"
                 className="absolute right-3 top-3"
-                onClick={() => setImageUrl("")}
+                onClick={() => {
+                  setVideoUrl("");
+                  setMediaType(null);
+                }}
               >
                 重新上传
               </Button>
             </div>
+          ) : mediaType === "image" && imageUrls.length > 0 ? (
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {imageUrls.map((url) => (
+                  <div key={url} className="relative overflow-hidden rounded-2xl border">
+                    <img src={url} alt="作品预览" className="h-[180px] w-full object-cover" />
+                    <button
+                      type="button"
+                      className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-1 text-xs"
+                      onClick={() =>
+                        setImageUrls((prev) => prev.filter((item) => item !== url))
+                      }
+                    >
+                      删除
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {imageUrls.length < 9 ? (
+                  <label className="flex h-12 cursor-pointer items-center justify-center rounded-xl border border-dashed px-4 text-sm text-muted-foreground hover:bg-slate-50">
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      multiple
+                      className="hidden"
+                      onChange={(event) => handleSelectFiles(event.target.files)}
+                    />
+                    继续上传图片
+                  </label>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setImageUrls([]);
+                    setMediaType(null);
+                  }}
+                >
+                  清空图片
+                </Button>
+              </div>
+            </div>
           ) : (
-            <label className="flex h-[220px] cursor-pointer items-center justify-center rounded-2xl border border-dashed text-sm text-muted-foreground hover:bg-slate-50">
-              <input
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(event) => handleSelectFile(event.target.files?.[0])}
-              />
-              {uploading ? "上传中..." : "点击上传作品图"}
-            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex h-[200px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed text-sm text-muted-foreground hover:bg-slate-50">
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  className="hidden"
+                  onChange={(event) => handleSelectFiles(event.target.files)}
+                />
+                {uploading ? "上传中..." : "上传图片（最多9张）"}
+              </label>
+              <label className="flex h-[200px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed text-sm text-muted-foreground hover:bg-slate-50">
+                <input
+                  type="file"
+                  accept="video/mp4,video/quicktime"
+                  className="hidden"
+                  onChange={(event) => handleSelectFiles(event.target.files)}
+                />
+                {uploading ? "上传中..." : "上传视频（单个，≤1GB）"}
+              </label>
+            </div>
           )}
         </div>
 

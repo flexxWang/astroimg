@@ -1,4 +1,13 @@
-import { IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 
 export class CreateWorkDto {
   @IsString()
@@ -13,7 +22,18 @@ export class CreateWorkDto {
 
   @IsString()
   @IsNotEmpty()
-  imageUrl: string;
+  @IsIn(['image', 'video'])
+  @IsNotEmpty()
+  mediaType: 'image' | 'video';
+
+  @IsArray()
+  @IsOptional()
+  @ArrayMaxSize(9)
+  imageUrls?: string[];
+
+  @IsString()
+  @IsOptional()
+  videoUrl?: string;
 
   @IsUUID()
   @IsOptional()

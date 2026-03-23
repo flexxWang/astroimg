@@ -22,8 +22,14 @@ export class Work {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
-  @Column({ name: 'image_url', length: 500 })
-  imageUrl: string;
+  @Column({ name: 'image_url', length: 500, nullable: true })
+  imageUrl?: string;
+
+  @Column({ name: 'image_urls', type: 'json', nullable: true })
+  imageUrls?: string[];
+
+  @Column({ name: 'video_url', length: 500, nullable: true })
+  videoUrl?: string;
 
   @ManyToOne(() => WorkType, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'type_id' })

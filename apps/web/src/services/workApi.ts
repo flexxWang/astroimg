@@ -18,7 +18,9 @@ export function fetchWorkDevices() {
 export function createWork(payload: {
   title: string;
   description?: string;
-  imageUrl: string;
+  mediaType: "image" | "video";
+  imageUrls?: string[];
+  videoUrl?: string;
   typeId?: string;
   deviceId?: string;
 }) {

@@ -14,6 +14,7 @@ interface PostCardProps {
   likeCount?: number;
   commentCount?: number;
   highlight?: string;
+  createdAt?: string;
 }
 
 export default function PostCard({
@@ -26,6 +27,7 @@ export default function PostCard({
   likeCount,
   commentCount,
   highlight,
+  createdAt,
 }: PostCardProps) {
   const highlightText = (text: string, keyword?: string) => {
     const value = keyword?.trim();
@@ -68,7 +70,11 @@ export default function PostCard({
         </Link>
       </CardContent>
       <CardFooter className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>刚刚</span>
+        <span>
+          {createdAt
+            ? new Date(createdAt).toLocaleDateString()
+            : "刚刚"}
+        </span>
         <div className="flex items-center gap-3">
           <span>点赞 {likeCount ?? 0}</span>
           <span>评论 {commentCount ?? 0}</span>

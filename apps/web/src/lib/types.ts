@@ -54,7 +54,9 @@ export interface WorkItem {
   id: string;
   title: string;
   description?: string;
-  imageUrl: string;
+  imageUrl?: string;
+  imageUrls?: string[];
+  videoUrl?: string;
   createdAt?: string;
   authorId: string;
   author?: AuthorInfo;

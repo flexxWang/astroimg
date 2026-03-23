@@ -112,6 +112,7 @@ export default function PostFeed({
             likeCount={post.likeCount}
             commentCount={post.commentCount}
             highlight={keyword}
+            createdAt={post.createdAt}
           />
         ))}
       </div>
