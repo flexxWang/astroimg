@@ -1,8 +1,8 @@
 import FollowButton from "@/components/FollowButton";
-import PostFeed from "@/components/PostFeed";
+import ProfileTabs from "@/components/ProfileTabs";
 import UserAvatar from "@/components/UserAvatar";
 import { serverFetch } from "@/lib/serverApi";
-import type { Paginated, PostListItem, UserProfile } from "@/lib/types";
+import type { Paginated, PostListItem, UserProfile, WorkItem } from "@/lib/types";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -18,12 +18,22 @@ export default async function UserProfilePage({
   const postsResult = await serverFetch<{ success: boolean; data: Paginated<PostListItem> }>(
     `/posts/user/${id}?page=1&pageSize=10`,
   );
+  const worksResult = await serverFetch<{ success: boolean; data: Paginated<WorkItem> }>(
+    `/works/user/${id}?page=1&pageSize=12`,
+  );
 
   const user = userResult.data;
   const postsPage = postsResult.data ?? {
     items: [],
     page: 1,
     pageSize: 10,
+    total: 0,
+    hasMore: false,
+  };
+  const worksPage = worksResult.data ?? {
+    items: [],
+    page: 1,
+    pageSize: 12,
     total: 0,
     hasMore: false,
   };
@@ -77,13 +87,8 @@ export default async function UserProfilePage({
       </section>
 
       <section className="space-y-4">
-        <h2 className="text-lg font-semibold">最近发布</h2>
-        <PostFeed
-          initialPage={postsPage}
-          pageSize={10}
-          userId={id}
-          emptyText="暂无帖子"
-        />
+        <h2 className="text-lg font-semibold">内容</h2>
+        <ProfileTabs userId={id} postsPage={postsPage} worksPage={worksPage} />
       </section>
     </div>
   );

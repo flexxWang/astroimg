@@ -27,3 +27,9 @@ export function createWork(payload: {
     body: JSON.stringify(payload),
   });
 }
+
+export function fetchWorksByUserPage(userId: string, page = 1, pageSize = 20) {
+  return apiFetch<{ success: boolean; data: Paginated<WorkItem> }>(
+    `/works/user/${userId}?page=${page}&pageSize=${pageSize}`,
+  );
+}

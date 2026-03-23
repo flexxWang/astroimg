@@ -112,6 +112,26 @@ export class WorkService implements OnModuleInit {
     };
   }
 
+  async listByAuthor(authorId: string, page = 1, pageSize = 20) {
+    const [rows, total] = await Promise.all([
+      this.baseQuery()
+        .where('work.authorId = :authorId', { authorId })
+        .orderBy('work.createdAt', 'DESC')
+        .offset((page - 1) * pageSize)
+        .limit(pageSize)
+        .getRawMany(),
+      this.workRepo.count({ where: { authorId } }),
+    ]);
+    const items = rows.map((row) => this.mapWork(row));
+    return {
+      items,
+      page,
+      pageSize,
+      total,
+      hasMore: page * pageSize < total,
+    };
+  }
+
   async create(authorId: string, dto: CreateWorkDto) {
     let typeId = dto.typeId;
     let deviceId = dto.deviceId;

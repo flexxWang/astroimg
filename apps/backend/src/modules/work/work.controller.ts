@@ -15,6 +15,17 @@ export class WorkController {
     return this.workService.list(pageNum, pageSizeNum);
   }
 
+  @Get('user/:userId')
+  listByUser(
+    @Param('userId') userId: string,
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '20',
+  ) {
+    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
+    const pageSizeNum = Math.min(Math.max(parseInt(pageSize, 10) || 10, 1), 50);
+    return this.workService.listByAuthor(userId, pageNum, pageSizeNum);
+  }
+
   @Get('types')
   listTypes() {
     return this.workService.listTypes();

@@ -33,14 +33,28 @@ export default function UserMenu() {
   };
 
   return (
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <UserAvatar name={username} size="sm" />
-          <span>{username}</span>
+    <div className="group relative">
+      <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+        <UserAvatar name={username} size="sm" />
+        <span>{username}</span>
+      </button>
+      <div className="pointer-events-none absolute right-0 top-full w-40 pt-3 opacity-0 transition group-hover:opacity-100 group-hover:pointer-events-auto">
+        <div className="rounded-xl border bg-white/95 p-2 shadow-lg">
+          <Link
+            href={`/user/${user.id}`}
+            className="block rounded-lg px-3 py-2 text-sm text-foreground hover:bg-slate-100"
+          >
+            我的主页
+          </Link>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="block w-full rounded-lg px-3 py-2 text-left text-sm text-foreground hover:bg-slate-100"
+          >
+            退出登录
+          </button>
         </div>
-        <Button variant="ghost" size="sm" onClick={handleLogout}>
-          退出
-        </Button>
       </div>
+    </div>
   );
 }

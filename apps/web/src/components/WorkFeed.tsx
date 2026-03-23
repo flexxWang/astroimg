@@ -2,27 +2,45 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { fetchWorksPage } from "@/services/workApi";
+import { fetchWorksByUserPage, fetchWorksPage } from "@/services/workApi";
 import type { Paginated, WorkItem } from "@/lib/types";
 import WorkCard from "@/components/WorkCard";
 
 export default function WorkFeed({
   initialPage,
   pageSize = 12,
+  userId,
 }: {
-  initialPage: Paginated<WorkItem>;
+  initialPage?: Paginated<WorkItem>;
   pageSize?: number;
+  userId?: string;
 }) {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const fetchingRef = useRef(false);
 
+  const isUserFeed = Boolean(userId);
+  const seedPage: Paginated<WorkItem> =
+    initialPage ?? {
+      items: [],
+      page: 1,
+      pageSize,
+      total: 0,
+      hasMore: false,
+    };
+
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery({
-      queryKey: ["works", "feed", pageSize],
-      queryFn: ({ pageParam = 1 }) =>
-        fetchWorksPage(pageParam, pageSize).then((res) => res.data),
+      queryKey: ["works", "feed", userId ?? "all", pageSize],
+      queryFn: ({ pageParam = 1 }) => {
+        if (isUserFeed && userId) {
+          return fetchWorksByUserPage(userId, pageParam, pageSize).then(
+            (res) => res.data,
+          );
+        }
+        return fetchWorksPage(pageParam, pageSize).then((res) => res.data);
+      },
       initialData: {
-        pages: [initialPage],
+        pages: [seedPage],
         pageParams: [1],
       },
       getNextPageParam: (lastPage) =>

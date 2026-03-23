@@ -7,7 +7,7 @@ import { fetchPostsByUserPage, fetchPostsPage, type PostListItem } from "@/servi
 import type { Paginated } from "@/lib/types";
 
 interface PostFeedProps {
-  initialPage: Paginated<PostListItem>;
+  initialPage?: Paginated<PostListItem>;
   pageSize?: number;
   emptyText?: string;
   keyword?: string;
@@ -25,6 +25,14 @@ export default function PostFeed({
   const fetchingRef = useRef(false);
 
   const isUserFeed = Boolean(userId);
+  const seedPage: Paginated<PostListItem> =
+    initialPage ?? {
+      items: [],
+      page: 1,
+      pageSize,
+      total: 0,
+      hasMore: false,
+    };
   const {
     data,
     fetchNextPage,
@@ -42,7 +50,7 @@ export default function PostFeed({
       return fetchPostsPage(pageParam, pageSize, keyword).then((res) => res.data);
     },
     initialData: {
-      pages: [initialPage],
+      pages: [seedPage],
       pageParams: [1],
     },
     getNextPageParam: (lastPage) =>
