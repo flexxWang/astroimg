@@ -73,3 +73,15 @@ export interface WorkComment {
   content: string;
   createdAt?: string;
 }
+
+export interface ObservationPoint {
+  id: string;
+  name: string;
+  description?: string;
+  latitude: number;
+  longitude: number;
+  lightPollution?: number;
+  elevation?: number;
+  authorId: string;
+  createdAt?: string;
+}

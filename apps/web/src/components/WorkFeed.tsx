@@ -74,7 +74,7 @@ export default function WorkFeed({
 
   return (
     <div className="space-y-6">
-      <div className="columns-1 gap-5 sm:columns-2 lg:columns-3 xl:columns-4">
+      <div className="columns-1 gap-3 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5">
         {works.map((work) => (
           <WorkCard key={work.id} work={work} />
         ))}

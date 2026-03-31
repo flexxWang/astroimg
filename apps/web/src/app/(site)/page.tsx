@@ -1,5 +1,6 @@
 import Link from "next/link";
 import WorkFeed from "@/components/WorkFeed";
+import LottieBanner from "@/components/LottieBanner";
 import { Button } from "@/components/ui/button";
 import { serverFetch } from "@/lib/serverApi";
 import type { Paginated, WorkItem } from "@/lib/types";
@@ -41,12 +42,14 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <LottieBanner />
+
       <section className="grid gap-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold">最新作品</h2>
           <span className="text-sm text-muted-foreground">社区精选</span>
         </div>
-        <div className="rounded-3xl border bg-white/70 p-4 shadow-sm md:p-6">
+        <div className="mx-auto w-full max-w-7xl px-6 lg:max-w-[1400px]">
           <WorkFeed initialPage={page} pageSize={12} />
         </div>
       </section>

@@ -71,10 +71,11 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}) {
       error.status = response.status;
       error.data = payload;
       if (response.status === 401 && typeof window !== "undefined") {
-        const next = encodeURIComponent(
-          window.location.pathname + window.location.search,
-        );
-        window.location.href = `/login?next=${next}`;
+        const currentPath = window.location.pathname + window.location.search;
+        if (!window.location.pathname.startsWith("/login")) {
+          const next = encodeURIComponent(currentPath);
+          window.location.href = `/login?next=${next}`;
+        }
       }
       throw error;
     }
