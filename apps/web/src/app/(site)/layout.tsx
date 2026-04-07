@@ -14,6 +14,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
           <nav className="flex items-center gap-6 text-sm text-muted-foreground">
             <Link href="/explore">探索</Link>
             <Link href="/map">地图</Link>
+            <Link href="/ai/copilot">AI副驾</Link>
             <div className="group relative">
               <button className="text-sm text-muted-foreground hover:text-foreground">
                 发布

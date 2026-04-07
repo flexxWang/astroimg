@@ -13,11 +13,6 @@ pnpm dev
 # or
 bun dev
 
-# minio server
-MINIO_ROOT_USER=minioadmin \
-MINIO_ROOT_PASSWORD=minioadmin \
-minio server ~/minio-data --console-address ":9001"
-
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.

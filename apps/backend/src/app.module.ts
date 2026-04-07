@@ -23,6 +23,7 @@ import { WorkModule } from './modules/work/work.module';
 import { WorkCommentModule } from './modules/work-comment/work-comment.module';
 import { WorkLikeModule } from './modules/work-like/work-like.module';
 import { ObservationModule } from './modules/observation/observation.module';
+import { AiModule } from './modules/ai/ai.module';
 
 @Module({
   imports: [
@@ -77,6 +78,7 @@ import { ObservationModule } from './modules/observation/observation.module';
     WorkCommentModule,
     WorkLikeModule,
     ObservationModule,
+    AiModule,
   ],
   controllers: [AppController],
 })

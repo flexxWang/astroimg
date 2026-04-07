@@ -1,7 +1,12 @@
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000";
 
-interface ApiOptions extends RequestInit {}
+type JsonLike = object | Array<unknown> | number | boolean | null;
+
+interface ApiOptions extends Omit<RequestInit, "body"> {
+  body?: BodyInit | JsonLike;
+  timeout?: number;
+}
 
 type ApiError = Error & { status?: number; data?: unknown };
 
@@ -26,15 +31,19 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}) {
   const headers = new Headers(options.headers);
   const timeout = (options as any).timeout ?? 15000;
 
-  let body = options.body;
-  if (body && typeof body === "object" && !isBodyLike(body)) {
-    body = JSON.stringify(body);
+  let body: BodyInit | undefined;
+  const rawBody = options.body;
+  if (rawBody && typeof rawBody === "object" && !isBodyLike(rawBody)) {
+    body = JSON.stringify(rawBody);
     if (!headers.has("Content-Type")) {
       headers.set("Content-Type", "application/json");
     }
-  } else if (typeof body === "string" && !headers.has("Content-Type")) {
+  } else if (typeof rawBody === "string" && !headers.has("Content-Type")) {
+    body = rawBody;
     headers.set("Content-Type", "application/json");
-  } else if (!body && !headers.has("Content-Type")) {
+  } else if (rawBody != null) {
+    body = rawBody as BodyInit;
+  } else if (!headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
 

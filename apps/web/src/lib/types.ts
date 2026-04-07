@@ -85,3 +85,57 @@ export interface ObservationPoint {
   authorId: string;
   createdAt?: string;
 }
+
+export interface AiCopilotInput {
+  locationName: string;
+  latitude?: number;
+  longitude?: number;
+  deviceType: string;
+  deviceModel?: string;
+  startTime: string;
+  endTime: string;
+  preference?: "moon" | "planet" | "deep-sky" | "wide-field" | "mixed";
+  level?: "beginner" | "intermediate" | "advanced";
+  availableMinutes?: number;
+}
+
+export interface AiCopilotPlan {
+  id: string;
+  title: string;
+  summary: string;
+  provider?: "openai" | "openrouter" | "fallback";
+  model?: string;
+  recommendedPoints: Array<{
+    id: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+    lightPollution?: number;
+    elevation?: number;
+    reason: string;
+  }>;
+  targets: Array<{
+    name: string;
+    reason: string;
+    settings: string;
+    score: number;
+  }>;
+  checklist: string[];
+  timeline: Array<{ step: string; minutes: number }>;
+  risks: string[];
+  createdAt?: string;
+}
+
+export interface AiPlanHistoryItem {
+  id: string;
+  createdAt?: string;
+  input: AiCopilotInput;
+  output: Omit<AiCopilotPlan, "id" | "createdAt">;
+}
+
+export interface AiCopilotStreamStatus {
+  stage: "started" | "streaming" | "fallback" | "saving";
+  provider?: "openai" | "openrouter";
+  model?: string;
+  reason?: string;
+}
