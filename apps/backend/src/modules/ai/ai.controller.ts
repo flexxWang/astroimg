@@ -51,7 +51,9 @@ export class AiController {
       await this.aiService.streamPlan(user.id, dto, { write });
     } catch (error) {
       write('error', {
-        message: error instanceof Error ? error.message : 'stream failed',
+        code: 500,
+        data: null,
+        msg: error instanceof Error ? error.message : 'stream failed',
       });
       write('done', { ok: false });
     } finally {
@@ -60,10 +62,7 @@ export class AiController {
   }
 
   @Get('history')
-  history(
-    @CurrentUser() user: { id: string },
-    @Query() query: PageQueryDto,
-  ) {
+  history(@CurrentUser() user: { id: string }, @Query() query: PageQueryDto) {
     return this.aiService.history(user.id, query.page, query.pageSize);
   }
 

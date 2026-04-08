@@ -9,10 +9,8 @@ export default async function WorkDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const result = await serverFetch<{ success: boolean; data: WorkItem }>(
-    `/works/${id}`,
-  );
-  const commentResult = await serverFetch<{ success: boolean; data: WorkComment[] }>(
+  const result = await serverFetch<WorkItem>(`/works/${id}`);
+  const commentResult = await serverFetch<WorkComment[]>(
     `/works/${id}/comments`,
   );
 

@@ -13,9 +13,7 @@ export default async function ExplorePage({
   const query = keyword
     ? `/posts?page=1&pageSize=10&keyword=${encodeURIComponent(keyword)}`
     : "/posts?page=1&pageSize=10";
-  const result = await serverFetch<{ success: boolean; data: Paginated<PostListItem> }>(
-    query,
-  );
+  const result = await serverFetch<Paginated<PostListItem>>(query);
   const page = result.data ?? {
     items: [],
     page: 1,
@@ -30,7 +28,12 @@ export default async function ExplorePage({
         <h1 className="text-2xl font-semibold">探索社区</h1>
         <ExploreSearch />
       </div>
-      <PostFeed initialPage={page} pageSize={10} keyword={keyword} emptyText="没有匹配内容。" />
+      <PostFeed
+        initialPage={page}
+        pageSize={10}
+        keyword={keyword}
+        emptyText="没有匹配内容。"
+      />
     </div>
   );
 }

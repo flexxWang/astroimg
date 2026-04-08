@@ -2,7 +2,12 @@ import FollowButton from "@/components/FollowButton";
 import ProfileTabs from "@/components/ProfileTabs";
 import UserAvatar from "@/components/UserAvatar";
 import { serverFetch } from "@/lib/serverApi";
-import type { Paginated, PostListItem, UserProfile, WorkItem } from "@/lib/types";
+import type {
+  Paginated,
+  PostListItem,
+  UserProfile,
+  WorkItem,
+} from "@/lib/types";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -12,13 +17,11 @@ export default async function UserProfilePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const userResult = await serverFetch<{ success: boolean; data: UserProfile }>(
-    `/users/${id}`,
-  );
-  const postsResult = await serverFetch<{ success: boolean; data: Paginated<PostListItem> }>(
+  const userResult = await serverFetch<UserProfile>(`/users/${id}`);
+  const postsResult = await serverFetch<Paginated<PostListItem>>(
     `/posts/user/${id}?page=1&pageSize=10`,
   );
-  const worksResult = await serverFetch<{ success: boolean; data: Paginated<WorkItem> }>(
+  const worksResult = await serverFetch<Paginated<WorkItem>>(
     `/works/user/${id}?page=1&pageSize=12`,
   );
 
@@ -37,7 +40,12 @@ export default async function UserProfilePage({
     total: 0,
     hasMore: false,
   };
-  const stats = user?.stats ?? { posts: 0, followers: 0, following: 0, likes: 0 };
+  const stats = user?.stats ?? {
+    posts: 0,
+    followers: 0,
+    following: 0,
+    likes: 0,
+  };
   console.log("用户信息", userResult, user);
 
   const joinedAt = user?.createdAt
@@ -50,7 +58,9 @@ export default async function UserProfilePage({
         <div className="flex flex-wrap items-center gap-6">
           <UserAvatar name={user?.username || "用户"} size="lg" />
           <div className="flex-1 space-y-2">
-            <h1 className="text-2xl font-semibold">{user?.username || "用户"}</h1>
+            <h1 className="text-2xl font-semibold">
+              {user?.username || "用户"}
+            </h1>
             <p className="text-sm text-muted-foreground">
               {user?.bio || "这个人还没有填写简介"}
             </p>

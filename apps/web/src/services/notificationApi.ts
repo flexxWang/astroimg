@@ -12,34 +12,22 @@ export interface NotificationItem {
 }
 
 export function fetchNotifications() {
-  return apiFetch<{ success: boolean; data: NotificationItem[] }>(
-    "/notifications",
-    {},
-  );
+  return apiFetch<NotificationItem[]>("/notifications", {});
 }
 
 export function fetchUnreadCount() {
-  return apiFetch<{ success: boolean; data: number }>(
-    "/notifications/unread-count",
-    {},
-  );
+  return apiFetch<number>("/notifications/unread-count", {});
 }
 
 export function markNotificationRead(id: string) {
-  return apiFetch<{ success: boolean; data: NotificationItem }>(
-    "/notifications/read",
-    {
-      method: "POST",
-      body: JSON.stringify({ id }),
-    },
-  );
+  return apiFetch<NotificationItem>("/notifications/read", {
+    method: "POST",
+    body: JSON.stringify({ id }),
+  });
 }
 
 export function markAllRead() {
-  return apiFetch<{ success: boolean; data: { success: boolean } }>(
-    "/notifications/read-all",
-    {
-      method: "POST",
-    },
-  );
+  return apiFetch<null>("/notifications/read-all", {
+    method: "POST",
+  });
 }

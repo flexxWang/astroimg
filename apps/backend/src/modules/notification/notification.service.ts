@@ -50,6 +50,6 @@ export class NotificationService {
 
   async markAllRead(userId: string) {
     await this.notificationRepo.update({ userId, read: false }, { read: true });
-    return { success: true };
+    return null;
   }
 }

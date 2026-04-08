@@ -2,17 +2,17 @@ import { apiFetch } from "@/services/api";
 import type { Paginated, WorkDevice, WorkItem, WorkType } from "@/lib/types";
 
 export function fetchWorksPage(page = 1, pageSize = 20) {
-  return apiFetch<{ success: boolean; data: Paginated<WorkItem> }>(
+  return apiFetch<Paginated<WorkItem>>(
     `/works?page=${page}&pageSize=${pageSize}`,
   );
 }
 
 export function fetchWorkTypes() {
-  return apiFetch<{ success: boolean; data: WorkType[] }>("/works/types");
+  return apiFetch<WorkType[]>("/works/types");
 }
 
 export function fetchWorkDevices() {
-  return apiFetch<{ success: boolean; data: WorkDevice[] }>("/works/devices");
+  return apiFetch<WorkDevice[]>("/works/devices");
 }
 
 export function createWork(payload: {
@@ -24,14 +24,14 @@ export function createWork(payload: {
   typeId?: string;
   deviceId?: string;
 }) {
-  return apiFetch<{ success: boolean; data: WorkItem }>("/works", {
+  return apiFetch<WorkItem>("/works", {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
 export function fetchWorksByUserPage(userId: string, page = 1, pageSize = 20) {
-  return apiFetch<{ success: boolean; data: Paginated<WorkItem> }>(
+  return apiFetch<Paginated<WorkItem>>(
     `/works/user/${userId}?page=${page}&pageSize=${pageSize}`,
   );
 }

@@ -1,13 +1,15 @@
+import {
+  createRequestError,
+  isApiResponse,
+  isSuccessCode,
+  type ApiErrorPayload,
+  type ApiResponse,
+} from "@/lib/apiResponse";
+
 const API_BASE =
   process.env.API_BASE ||
   process.env.NEXT_PUBLIC_API_BASE ||
   "http://127.0.0.1:4000";
-
-type ServerErrorPayload = {
-  message?: string | string[];
-  errorCode?: string;
-  details?: unknown;
-};
 
 export async function serverFetch<T>(
   path: string,
@@ -26,10 +28,7 @@ export async function serverFetch<T>(
   }
 
   const controller = new AbortController();
-  const timer = setTimeout(
-    () => controller.abort(),
-    options.timeout ?? 15000,
-  );
+  const timer = setTimeout(() => controller.abort(), options.timeout ?? 15000);
 
   try {
     const res = await fetch(`${API_BASE}${path}`, {
@@ -38,40 +37,45 @@ export async function serverFetch<T>(
       headers,
       signal: controller.signal,
     });
-    if (!res.ok) {
-      let payload: any = null;
+
+    let payload: unknown = null;
+    try {
+      payload = await res.json();
+    } catch {
       try {
-        payload = await res.json();
-      } catch {
         payload = await res.text();
+      } catch {
+        payload = null;
       }
-      const payloadMessage =
-        payload && typeof payload === "object"
-          ? (payload as ServerErrorPayload).message
-          : undefined;
-      const message =
-        Array.isArray(payloadMessage)
-          ? payloadMessage.join("、")
-          : typeof payloadMessage === "string"
-            ? payloadMessage
-          : typeof payload === "string"
-            ? payload
-            : `Request failed: ${res.status}`;
-      const error = new Error(message) as Error & {
-        status?: number;
-        data?: unknown;
-        errorCode?: string;
-        details?: unknown;
-      };
-      (error as any).status = res.status;
-      (error as any).data = payload;
-      if (payload && typeof payload === "object") {
-        (error as any).errorCode = (payload as ServerErrorPayload).errorCode;
-        (error as any).details = (payload as ServerErrorPayload).details;
-      }
-      throw error;
     }
-    return (await res.json()) as T;
+
+    if (!res.ok) {
+      throw createRequestError(
+        typeof payload === "string"
+          ? payload
+          : (payload as ApiErrorPayload | null),
+        `Request failed: ${res.status}`,
+        res.status,
+      );
+    }
+
+    if (!isApiResponse(payload)) {
+      throw createRequestError(
+        null,
+        "接口响应格式异常，请稍后再试。",
+        res.status,
+      );
+    }
+
+    if (!isSuccessCode(payload.code)) {
+      throw createRequestError(
+        payload,
+        `Request failed: ${payload.code}`,
+        payload.code,
+      );
+    }
+
+    return payload as ApiResponse<T>;
   } catch (err) {
     if ((err as Error).name === "AbortError") {
       const error = new Error("请求超时") as Error & { status?: number };

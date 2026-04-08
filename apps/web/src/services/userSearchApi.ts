@@ -7,7 +7,7 @@ export interface SearchUserItem {
 }
 
 export function searchUsers(keyword: string) {
-  return apiFetch<{ success: boolean; data: SearchUserItem[] }>(
+  return apiFetch<SearchUserItem[]>(
     `/users?keyword=${encodeURIComponent(keyword)}`,
     {},
   );

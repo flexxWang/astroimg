@@ -9,7 +9,10 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const result = await this.authService.register(dto);
     res.cookie('access_token', result.accessToken, {
       httpOnly: true,
@@ -21,7 +24,10 @@ export class AuthController {
   }
 
   @Post('login')
-  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const result = await this.authService.login(dto);
     res.cookie('access_token', result.accessToken, {
       httpOnly: true,
@@ -35,6 +41,6 @@ export class AuthController {
   @Post('logout')
   logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie('access_token');
-    return { success: true };
+    return null;
   }
 }

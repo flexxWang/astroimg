@@ -1,29 +1,23 @@
 export const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000";
 
-type JsonLike = object | Array<unknown> | number | boolean | null;
+import {
+  createRequestError,
+  isApiResponse,
+  isSuccessCode,
+  type ApiErrorPayload,
+  type ApiResponse,
+  type RequestError,
+} from "@/lib/apiResponse";
 
-export interface ErrorPayload {
-  success?: false;
-  statusCode?: number;
-  path?: string;
-  message?: string | string[];
-  errorCode?: string;
-  details?: unknown;
-  timestamp?: string;
-}
+type JsonLike = object | Array<unknown> | number | boolean | null;
 
 interface ApiOptions extends Omit<RequestInit, "body"> {
   body?: BodyInit | JsonLike;
   timeout?: number;
 }
 
-export type ApiError = Error & {
-  status?: number;
-  data?: unknown;
-  errorCode?: string;
-  details?: unknown;
-};
+export type ApiError = RequestError;
 
 function isBodyLike(value: unknown) {
   return (
@@ -32,14 +26,6 @@ function isBodyLike(value: unknown) {
     value instanceof ArrayBuffer ||
     value instanceof URLSearchParams
   );
-}
-
-function parseErrorMessage(payload: ErrorPayload | string | null, fallback: string) {
-  if (!payload) return fallback;
-  if (typeof payload === "string") return payload;
-  if (Array.isArray(payload?.message)) return payload.message.join("、");
-  if (typeof payload?.message === "string") return payload.message;
-  return fallback;
 }
 
 export function getApiErrorCode(error: unknown) {
@@ -91,23 +77,27 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}) {
       signal: controller.signal,
     });
 
-    if (!response.ok) {
-      let payload: any = null;
+    let payload: unknown = null;
+    try {
+      payload = await response.json();
+    } catch {
       try {
-        payload = await response.json();
-      } catch {
         payload = await response.text();
+      } catch {
+        payload = null;
       }
+    }
+
+    if (!response.ok) {
       const normalizedPayload =
-        typeof payload === "string" ? payload : (payload as ErrorPayload | null);
-      const message = parseErrorMessage(normalizedPayload, "Request failed");
-      const error: ApiError = new Error(message);
-      error.status = response.status;
-      error.data = payload;
-      if (normalizedPayload && typeof normalizedPayload !== "string") {
-        error.errorCode = normalizedPayload.errorCode;
-        error.details = normalizedPayload.details;
-      }
+        typeof payload === "string"
+          ? payload
+          : (payload as ApiErrorPayload | null);
+      const error = createRequestError(
+        normalizedPayload,
+        "Request failed",
+        response.status,
+      );
       if (response.status === 401 && typeof window !== "undefined") {
         const currentPath = window.location.pathname + window.location.search;
         if (!window.location.pathname.startsWith("/login")) {
@@ -118,7 +108,19 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}) {
       throw error;
     }
 
-    return (await response.json()) as T;
+    if (!isApiResponse(payload)) {
+      throw createRequestError(
+        null,
+        "接口响应格式异常，请稍后再试。",
+        response.status,
+      );
+    }
+
+    if (!isSuccessCode(payload.code)) {
+      throw createRequestError(payload, "Request failed", payload.code);
+    }
+
+    return payload as ApiResponse<T>;
   } catch (err) {
     if ((err as Error).name === "AbortError") {
       const error: ApiError = new Error("请求超时");

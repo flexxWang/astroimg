@@ -52,16 +52,17 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const errorCode =
       typeof responseBody.errorCode === 'string'
         ? responseBody.errorCode
-        : status === HttpStatus.BAD_REQUEST && Array.isArray(responseBody.message)
+        : status === HttpStatus.BAD_REQUEST &&
+            Array.isArray(responseBody.message)
           ? ErrorCode.VALIDATION_ERROR
-        : defaultErrorCode(status);
+          : defaultErrorCode(status);
     const details = responseBody.details;
 
     response.status(status).json({
-      success: false,
-      statusCode: status,
+      code: status,
+      data: null,
+      msg: message,
       path: request.url,
-      message,
       errorCode,
       details,
       timestamp: new Date().toISOString(),

@@ -8,17 +8,12 @@ export interface CommentItem {
 }
 
 export function fetchComments(postId: string) {
-  return apiFetch<{ success: boolean; data: CommentItem[] }>(
-    `/posts/${postId}/comments`,
-  );
+  return apiFetch<CommentItem[]>(`/posts/${postId}/comments`);
 }
 
 export function createComment(postId: string, payload: { content: string }) {
-  return apiFetch<{ success: boolean; data: CommentItem }>(
-    `/posts/${postId}/comments`,
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    },
-  );
+  return apiFetch<CommentItem>(`/posts/${postId}/comments`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }

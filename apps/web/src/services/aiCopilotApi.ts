@@ -1,3 +1,8 @@
+import {
+  createRequestError,
+  parseApiErrorMessage,
+  type ApiErrorPayload,
+} from "@/lib/apiResponse";
 import { apiFetch } from "@/services/api";
 import { API_BASE } from "@/services/api";
 import type {
@@ -9,26 +14,22 @@ import type {
 } from "@/lib/types";
 
 export function createAiPlan(payload: AiCopilotInput) {
-  return apiFetch<{ success: boolean; data: AiCopilotPlan }>("/ai/copilot/plan", {
+  return apiFetch<AiCopilotPlan>("/ai/copilot/plan", {
     method: "POST",
     body: payload,
   });
 }
 
 export function fetchAiPlanHistory(page = 1, pageSize = 10) {
-  return apiFetch<{
-    success: boolean;
-    data: Paginated<AiPlanHistoryItem>;
-  }>(`/ai/copilot/history?page=${page}&pageSize=${pageSize}`);
+  return apiFetch<Paginated<AiPlanHistoryItem>>(
+    `/ai/copilot/history?page=${page}&pageSize=${pageSize}`,
+  );
 }
 
 export function deleteAiPlanHistory(id: string) {
-  return apiFetch<{ success: boolean; data: { id: string } }>(
-    `/ai/copilot/history/${id}`,
-    {
-      method: "DELETE",
-    },
-  );
+  return apiFetch<{ id: string }>(`/ai/copilot/history/${id}`, {
+    method: "DELETE",
+  });
 }
 
 type StreamHandlers = {
@@ -39,10 +40,7 @@ type StreamHandlers = {
   onDone?: (payload: { ok?: boolean }) => void;
 };
 
-function parseSseChunk(
-  raw: string,
-  handlers: StreamHandlers,
-) {
+function parseSseChunk(raw: string, handlers: StreamHandlers) {
   let event = "message";
   const dataLines: string[] = [];
 
@@ -67,7 +65,12 @@ function parseSseChunk(
   } else if (event === "result") {
     handlers.onResult?.(payload as AiCopilotPlan);
   } else if (event === "error") {
-    handlers.onError?.(String(payload?.message ?? "流式生成失败"));
+    handlers.onError?.(
+      parseApiErrorMessage(
+        payload as ApiErrorPayload | string | null,
+        "流式生成失败",
+      ),
+    );
   } else if (event === "done") {
     handlers.onDone?.(payload as { ok?: boolean });
   }
@@ -90,22 +93,25 @@ export async function streamAiPlan(
   });
 
   if (!response.ok) {
-    let message = "流式生成失败";
+    let payload: unknown = null;
     try {
-      const body = await response.json();
-      message = String(body?.message ?? message);
+      payload = await response.json();
     } catch {
       const text = await response.text();
-      if (text) {
-        message = text;
-      }
+      payload = text || null;
     }
-    throw new Error(message);
+    throw createRequestError(
+      typeof payload === "string"
+        ? payload
+        : (payload as ApiErrorPayload | null),
+      "流式生成失败",
+      response.status,
+    );
   }
 
   const reader = response.body?.getReader();
   if (!reader) {
-    throw new Error("流式响应为空");
+    throw createRequestError(null, "流式响应为空", response.status);
   }
 
   const decoder = new TextDecoder();

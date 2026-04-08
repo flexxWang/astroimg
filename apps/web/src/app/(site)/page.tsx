@@ -6,7 +6,7 @@ import { serverFetch } from "@/lib/serverApi";
 import type { Paginated, WorkItem } from "@/lib/types";
 
 export default async function HomePage() {
-  const result = await serverFetch<{ success: boolean; data: Paginated<WorkItem> }>(
+  const result = await serverFetch<Paginated<WorkItem>>(
     "/works?page=1&pageSize=12",
   );
   const page = result.data ?? {

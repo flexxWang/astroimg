@@ -93,14 +93,15 @@ export class MessageService {
     if (cursor) {
       qb.andWhere('m.createdAt < :cursor', { cursor: new Date(cursor) });
     }
-    const list = await qb
-      .orderBy('m.createdAt', 'DESC')
-      .limit(20)
-      .getMany();
+    const list = await qb.orderBy('m.createdAt', 'DESC').limit(20).getMany();
     return list.reverse();
   }
 
-  async searchMessages(userId: string, conversationId: string, keyword?: string) {
+  async searchMessages(
+    userId: string,
+    conversationId: string,
+    keyword?: string,
+  ) {
     if (!keyword) return [];
     const conversation = await this.conversationRepo.findOne({
       where: { id: conversationId },
@@ -158,6 +159,6 @@ export class MessageService {
       { read: true },
     );
     this.gateway.emitToUser(userId, 'conversation:read', { conversationId });
-    return { success: true };
+    return null;
   }
 }

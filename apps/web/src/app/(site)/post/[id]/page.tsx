@@ -18,13 +18,10 @@ export default async function PostDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const result = await serverFetch<{ success: boolean; data: PostListItem }>(
-    `/posts/${id}`,
+  const result = await serverFetch<PostListItem>(`/posts/${id}`);
+  const commentResult = await serverFetch<CommentItem[]>(
+    `/posts/${id}/comments`,
   );
-  const commentResult = await serverFetch<{
-    success: boolean;
-    data: CommentItem[];
-  }>(`/posts/${id}/comments`);
 
   if (!result?.data) {
     notFound();
@@ -47,14 +44,18 @@ export default async function PostDetailPage({
                 {post.author?.username || post.authorId}
               </div>
               <div className="text-xs text-muted-foreground">
-                {post.createdAt ? new Date(post.createdAt).toLocaleDateString() : ""}
+                {post.createdAt
+                  ? new Date(post.createdAt).toLocaleDateString()
+                  : ""}
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <FollowButton userId={post.authorId} />
             <Link href={`/messages?to=${post.authorId}`}>
-              <Button variant="secondary" size="sm">私信</Button>
+              <Button variant="secondary" size="sm">
+                私信
+              </Button>
             </Link>
           </div>
         </div>

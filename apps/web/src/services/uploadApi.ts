@@ -1,13 +1,13 @@
 import { apiFetch } from "@/services/api";
 
 export function signUpload(filename: string, contentType?: string) {
-  return apiFetch<{
-    success: boolean;
-    data: { uploadUrl: string; fileUrl: string; objectKey: string };
-  }>("/uploads/sign", {
-    method: "POST",
-    body: JSON.stringify({ filename, contentType }),
-  });
+  return apiFetch<{ uploadUrl: string; fileUrl: string; objectKey: string }>(
+    "/uploads/sign",
+    {
+      method: "POST",
+      body: JSON.stringify({ filename, contentType }),
+    },
+  );
 }
 
 export async function uploadFile(uploadUrl: string, file: File) {

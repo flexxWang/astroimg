@@ -5,27 +5,19 @@ export function register(payload: {
   email: string;
   password: string;
 }) {
-  return apiFetch<{ success: boolean; data: { accessToken: string } }>(
-    "/auth/register",
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    },
-  );
+  return apiFetch<{ accessToken: string }>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function login(payload: { usernameOrEmail: string; password: string }) {
-  return apiFetch<{ success: boolean; data: { accessToken: string } }>(
-    "/auth/login",
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    },
-  );
+  return apiFetch<{ accessToken: string }>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 
 export function fetchMe() {
-  return apiFetch<{ success: boolean; data: { id: string; username: string } }>(
-    "/users/me",
-  );
+  return apiFetch<{ id: string; username: string }>("/users/me");
 }
