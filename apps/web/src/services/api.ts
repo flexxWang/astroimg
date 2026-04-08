@@ -3,12 +3,27 @@ export const API_BASE =
 
 type JsonLike = object | Array<unknown> | number | boolean | null;
 
+export interface ErrorPayload {
+  success?: false;
+  statusCode?: number;
+  path?: string;
+  message?: string | string[];
+  errorCode?: string;
+  details?: unknown;
+  timestamp?: string;
+}
+
 interface ApiOptions extends Omit<RequestInit, "body"> {
   body?: BodyInit | JsonLike;
   timeout?: number;
 }
 
-type ApiError = Error & { status?: number; data?: unknown };
+export type ApiError = Error & {
+  status?: number;
+  data?: unknown;
+  errorCode?: string;
+  details?: unknown;
+};
 
 function isBodyLike(value: unknown) {
   return (
@@ -19,12 +34,20 @@ function isBodyLike(value: unknown) {
   );
 }
 
-function parseErrorMessage(payload: any, fallback: string) {
+function parseErrorMessage(payload: ErrorPayload | string | null, fallback: string) {
   if (!payload) return fallback;
   if (typeof payload === "string") return payload;
   if (Array.isArray(payload?.message)) return payload.message.join("、");
   if (typeof payload?.message === "string") return payload.message;
   return fallback;
+}
+
+export function getApiErrorCode(error: unknown) {
+  return (error as ApiError | undefined)?.errorCode;
+}
+
+export function isApiErrorCode(error: unknown, code: string) {
+  return getApiErrorCode(error) === code;
 }
 
 export async function apiFetch<T>(path: string, options: ApiOptions = {}) {
@@ -75,10 +98,16 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}) {
       } catch {
         payload = await response.text();
       }
-      const message = parseErrorMessage(payload, "Request failed");
+      const normalizedPayload =
+        typeof payload === "string" ? payload : (payload as ErrorPayload | null);
+      const message = parseErrorMessage(normalizedPayload, "Request failed");
       const error: ApiError = new Error(message);
       error.status = response.status;
       error.data = payload;
+      if (normalizedPayload && typeof normalizedPayload !== "string") {
+        error.errorCode = normalizedPayload.errorCode;
+        error.details = normalizedPayload.details;
+      }
       if (response.status === 401 && typeof window !== "undefined") {
         const currentPath = window.location.pathname + window.location.search;
         if (!window.location.pathname.startsWith("/login")) {
@@ -94,6 +123,7 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}) {
     if ((err as Error).name === "AbortError") {
       const error: ApiError = new Error("请求超时");
       error.status = 408;
+      error.errorCode = "REQUEST_TIMEOUT";
       throw error;
     }
     throw err;

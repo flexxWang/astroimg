@@ -10,6 +10,8 @@ import { useUserStore } from "@/stores/userStore";
 import { createPost } from "@/services/postApi";
 import { createDraft, publishDraft, updateDraft } from "@/services/draftApi";
 import { useToast } from "@/hooks/useToast";
+import { showApiErrorToast } from "@/lib/showApiErrorToast";
+import { showErrorToast, showSuccessToast } from "@/lib/showToastMessage";
 
 export default function CreatePostPage() {
   const router = useRouter();
@@ -17,7 +19,7 @@ export default function CreatePostPage() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
-  const { toast, hasToast } = useToast();
+  const { hasToast } = useToast();
   const canPublish = Boolean(title.trim() && content.trim());
   const lastSavedRef = useRef({ title: "", content: "" });
   const [draftId, setDraftId] = useState<string | null>(null);
@@ -43,11 +45,7 @@ export default function CreatePostPage() {
 
     if (!title.trim() || !content.trim()) {
       if (!hasToast("请补全内容")) {
-        toast({
-          title: "请补全内容",
-          description: "标题和正文不能为空。",
-          variant: "destructive",
-        });
+        showErrorToast("请补全内容", "标题和正文不能为空。");
       }
       return;
     }
@@ -61,10 +59,9 @@ export default function CreatePostPage() {
         router.push(`/post/${result.data.id}`);
       }
     } catch (err) {
-      toast({
+      showApiErrorToast(err, {
         title: "发布失败",
-        description: (err as Error).message,
-        variant: "destructive",
+        fallback: "发布失败，请稍后再试。",
       });
     } finally {
       setLoading(false);
@@ -85,12 +82,11 @@ export default function CreatePostPage() {
         setDraftId(result.data.id);
       }
       lastSavedRef.current = { title, content };
-      toast({ title: "草稿已保存" });
+      showSuccessToast("草稿已保存");
     } catch (err) {
-      toast({
+      showApiErrorToast(err, {
         title: "保存失败",
-        description: (err as Error).message,
-        variant: "destructive",
+        fallback: "保存失败，请稍后再试。",
       });
     } finally {
       setLoading(false);
@@ -110,7 +106,11 @@ export default function CreatePostPage() {
           onChange={(event) => setTitle(event.target.value)}
         />
         <div className="flex-1 min-h-0">
-          <PostEditor onChange={setContent} value={content} className="h-full min-h-0" />
+          <PostEditor
+            onChange={setContent}
+            value={content}
+            className="h-full min-h-0"
+          />
         </div>
         <div className="flex justify-end gap-3">
           <Button type="button" variant="secondary" onClick={handleSaveDraft}>

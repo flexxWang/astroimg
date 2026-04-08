@@ -9,13 +9,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useUserStore } from "@/stores/userStore";
 import { useToast } from "@/hooks/useToast";
-import { createWork, fetchWorkDevices, fetchWorkTypes } from "@/services/workApi";
+import {
+  createWork,
+  fetchWorkDevices,
+  fetchWorkTypes,
+} from "@/services/workApi";
 import { signUpload, uploadFile } from "@/services/uploadApi";
+import { showApiErrorToast } from "@/lib/showApiErrorToast";
+import { showErrorToast, showSuccessToast } from "@/lib/showToastMessage";
 
 export default function CreateWorkPage() {
   const router = useRouter();
   const user = useUserStore((state) => state.user);
-  const { toast, hasToast } = useToast();
+  const { hasToast } = useToast();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [typeId, setTypeId] = useState("");
@@ -75,11 +81,10 @@ export default function CreateWorkPage() {
     const nextType: "image" | "video" = isVideo ? "video" : "image";
 
     if (mediaType && mediaType !== nextType) {
-      toast({
-        title: "不能混合上传",
-        description: "图片与视频不能混合上传，请先清空再选择。",
-        variant: "destructive",
-      });
+      showErrorToast(
+        "不能混合上传",
+        "图片与视频不能混合上传，请先清空再选择。",
+      );
       return;
     }
 
@@ -87,19 +92,11 @@ export default function CreateWorkPage() {
       const allowed = ["image/jpeg", "image/png", "image/webp"];
       const validFiles = list.filter((file) => allowed.includes(file.type));
       if (validFiles.length === 0) {
-        toast({
-          title: "格式不支持",
-          description: "仅支持 jpg / jpeg / png / webp。",
-          variant: "destructive",
-        });
+        showErrorToast("格式不支持", "仅支持 jpg / jpeg / png / webp。");
         return;
       }
       if (imageUrls.length + validFiles.length > 9) {
-        toast({
-          title: "图片数量过多",
-          description: "最多上传 9 张图片。",
-          variant: "destructive",
-        });
+        showErrorToast("图片数量过多", "最多上传 9 张图片。");
         return;
       }
       setUploading(true);
@@ -112,12 +109,11 @@ export default function CreateWorkPage() {
           uploaded.push(sign.data.fileUrl);
         }
         setImageUrls((prev) => [...prev, ...uploaded]);
-        toast({ title: "图片已上传" });
+        showSuccessToast("图片已上传");
       } catch (err) {
-        toast({
+        showApiErrorToast(err, {
           title: "上传失败",
-          description: (err as Error).message,
-          variant: "destructive",
+          fallback: "上传失败，请稍后再试。",
         });
       } finally {
         setUploading(false);
@@ -127,29 +123,17 @@ export default function CreateWorkPage() {
 
     // video
     if (list.length > 1) {
-      toast({
-        title: "只能上传一个视频",
-        description: "视频作品仅支持 1 个文件。",
-        variant: "destructive",
-      });
+      showErrorToast("只能上传一个视频", "视频作品仅支持 1 个文件。");
       return;
     }
     const file = list[0];
     const allowedVideo = ["video/mp4", "video/quicktime"];
     if (!allowedVideo.includes(file.type)) {
-      toast({
-        title: "格式不支持",
-        description: "仅支持 mp4 / mov。",
-        variant: "destructive",
-      });
+      showErrorToast("格式不支持", "仅支持 mp4 / mov。");
       return;
     }
     if (file.size > 1024 * 1024 * 1024) {
-      toast({
-        title: "视频过大",
-        description: "视频大小不能超过 1GB。",
-        variant: "destructive",
-      });
+      showErrorToast("视频过大", "视频大小不能超过 1GB。");
       return;
     }
     setUploading(true);
@@ -159,12 +143,11 @@ export default function CreateWorkPage() {
       const sign = await signUpload(file.name, file.type);
       await uploadFile(sign.data.uploadUrl, file);
       setVideoUrl(sign.data.fileUrl);
-      toast({ title: "视频已上传" });
+      showSuccessToast("视频已上传");
     } catch (err) {
-      toast({
+      showApiErrorToast(err, {
         title: "上传失败",
-        description: (err as Error).message,
-        variant: "destructive",
+        fallback: "上传失败，请稍后再试。",
       });
     } finally {
       setUploading(false);
@@ -178,11 +161,7 @@ export default function CreateWorkPage() {
     }
     if (!canPublish) {
       if (!hasToast("请补全作品信息")) {
-        toast({
-          title: "请补全作品信息",
-          description: "标题、作品图、类型、设备为必填项。",
-          variant: "destructive",
-        });
+        showErrorToast("请补全作品信息", "标题、作品图、类型、设备为必填项。");
       }
       return;
     }
@@ -199,10 +178,9 @@ export default function CreateWorkPage() {
       });
       router.push("/");
     } catch (err) {
-      toast({
+      showApiErrorToast(err, {
         title: "发布失败",
-        description: (err as Error).message,
-        variant: "destructive",
+        fallback: "发布失败，请稍后再试。",
       });
     } finally {
       setPublishing(false);
@@ -268,7 +246,11 @@ export default function CreateWorkPage() {
           <label className="text-sm text-muted-foreground">作品媒体</label>
           {mediaType === "video" && videoUrl ? (
             <div className="relative overflow-hidden rounded-2xl border">
-              <video src={videoUrl} controls className="h-[360px] w-full object-cover" />
+              <video
+                src={videoUrl}
+                controls
+                className="h-[360px] w-full object-cover"
+              />
               <Button
                 type="button"
                 variant="secondary"
@@ -286,13 +268,22 @@ export default function CreateWorkPage() {
             <div className="space-y-3">
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {imageUrls.map((url) => (
-                  <div key={url} className="relative overflow-hidden rounded-2xl border">
-                    <img src={url} alt="作品预览" className="h-[180px] w-full object-cover" />
+                  <div
+                    key={url}
+                    className="relative overflow-hidden rounded-2xl border"
+                  >
+                    <img
+                      src={url}
+                      alt="作品预览"
+                      className="h-[180px] w-full object-cover"
+                    />
                     <button
                       type="button"
                       className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-1 text-xs"
                       onClick={() =>
-                        setImageUrls((prev) => prev.filter((item) => item !== url))
+                        setImageUrls((prev) =>
+                          prev.filter((item) => item !== url),
+                        )
                       }
                     >
                       删除
@@ -308,7 +299,9 @@ export default function CreateWorkPage() {
                       accept="image/jpeg,image/png,image/webp"
                       multiple
                       className="hidden"
-                      onChange={(event) => handleSelectFiles(event.target.files)}
+                      onChange={(event) =>
+                        handleSelectFiles(event.target.files)
+                      }
                     />
                     继续上传图片
                   </label>
@@ -351,7 +344,10 @@ export default function CreateWorkPage() {
         </div>
 
         <div className="flex justify-end gap-3">
-          <Button onClick={handlePublish} disabled={publishing || uploading || !canPublish}>
+          <Button
+            onClick={handlePublish}
+            disabled={publishing || uploading || !canPublish}
+          >
             {publishing ? "发布中..." : "发布作品"}
           </Button>
         </div>

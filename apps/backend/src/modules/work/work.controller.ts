@@ -3,27 +3,20 @@ import { WorkService } from './work.service';
 import { CreateWorkDto } from './dto/create-work.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { PageQueryDto } from '../../common/dto/page-query.dto';
 
 @Controller('works')
 export class WorkController {
   constructor(private readonly workService: WorkService) {}
 
   @Get()
-  list(@Query('page') page = '1', @Query('pageSize') pageSize = '20') {
-    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
-    const pageSizeNum = Math.min(Math.max(parseInt(pageSize, 10) || 10, 1), 50);
-    return this.workService.list(pageNum, pageSizeNum);
+  list(@Query() query: PageQueryDto) {
+    return this.workService.list(query.page, query.pageSize);
   }
 
   @Get('user/:userId')
-  listByUser(
-    @Param('userId') userId: string,
-    @Query('page') page = '1',
-    @Query('pageSize') pageSize = '20',
-  ) {
-    const pageNum = Math.max(parseInt(page, 10) || 1, 1);
-    const pageSizeNum = Math.min(Math.max(parseInt(pageSize, 10) || 10, 1), 50);
-    return this.workService.listByAuthor(userId, pageNum, pageSizeNum);
+  listByUser(@Param('userId') userId: string, @Query() query: PageQueryDto) {
+    return this.workService.listByAuthor(userId, query.page, query.pageSize);
   }
 
   @Get('types')

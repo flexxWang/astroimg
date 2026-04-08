@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
+import { PageQueryDto } from '../../common/dto/page-query.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { AiService } from './ai.service';
@@ -61,10 +62,9 @@ export class AiController {
   @Get('history')
   history(
     @CurrentUser() user: { id: string },
-    @Query('page') page?: string,
-    @Query('pageSize') pageSize?: string,
+    @Query() query: PageQueryDto,
   ) {
-    return this.aiService.history(user.id, Number(page), Number(pageSize));
+    return this.aiService.history(user.id, query.page, query.pageSize);
   }
 
   @Delete('history/:id')

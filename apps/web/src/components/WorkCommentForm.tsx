@@ -6,12 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useUserStore } from "@/stores/userStore";
 import { createWorkComment } from "@/services/workCommentApi";
-import { useToast } from "@/hooks/useToast";
+import { showApiErrorToast } from "@/lib/showApiErrorToast";
 
 export default function WorkCommentForm({ workId }: { workId: string }) {
   const router = useRouter();
   const user = useUserStore((state) => state.user);
-  const { toast } = useToast();
   const [content, setContent] = useState("");
   const maxLength = 300;
   const [loading, setLoading] = useState(false);
@@ -30,10 +29,9 @@ export default function WorkCommentForm({ workId }: { workId: string }) {
       setContent("");
       router.refresh();
     } catch (err) {
-      toast({
+      showApiErrorToast(err, {
         title: "评论失败",
-        description: (err as Error).message,
-        variant: "destructive",
+        fallback: "评论失败，请稍后再试。",
       });
     } finally {
       setLoading(false);
@@ -48,7 +46,9 @@ export default function WorkCommentForm({ workId }: { workId: string }) {
         onChange={(event) => setContent(event.target.value)}
       />
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>{content.length}/{maxLength}</span>
+        <span>
+          {content.length}/{maxLength}
+        </span>
         {content.length > maxLength ? (
           <span className="text-red-500">内容过长</span>
         ) : null}

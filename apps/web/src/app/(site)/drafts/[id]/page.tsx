@@ -9,12 +9,14 @@ import { Button } from "@/components/ui/button";
 import { useUserStore } from "@/stores/userStore";
 import { fetchDraft, publishDraft, updateDraft } from "@/services/draftApi";
 import { useToast } from "@/hooks/useToast";
+import { showApiErrorToast } from "@/lib/showApiErrorToast";
+import { showErrorToast, showSuccessToast } from "@/lib/showToastMessage";
 
 export default function DraftEditPage() {
   const params = useParams();
   const router = useRouter();
   const user = useUserStore((state) => state.user);
-  const { toast, hasToast } = useToast();
+  const { hasToast } = useToast();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,13 +30,12 @@ export default function DraftEditPage() {
         setContent(result.data.content || "");
       })
       .catch((err) => {
-        toast({
+        showApiErrorToast(err, {
           title: "加载失败",
-          description: (err as Error).message,
-          variant: "destructive",
+          fallback: "加载失败，请稍后再试。",
         });
       });
-  }, [draftId, user, toast]);
+  }, [draftId, user]);
 
   const handleSave = async () => {
     if (!user) {
@@ -44,12 +45,11 @@ export default function DraftEditPage() {
     setLoading(true);
     try {
       await updateDraft(draftId, { title, content });
-      toast({ title: "草稿已保存" });
+      showSuccessToast("草稿已保存");
     } catch (err) {
-      toast({
+      showApiErrorToast(err, {
         title: "保存失败",
-        description: (err as Error).message,
-        variant: "destructive",
+        fallback: "保存失败，请稍后再试。",
       });
     } finally {
       setLoading(false);
@@ -63,11 +63,7 @@ export default function DraftEditPage() {
     }
     if (!title.trim() || !content.trim()) {
       if (!hasToast("请补全内容")) {
-        toast({
-          title: "请补全内容",
-          description: "标题和正文不能为空。",
-          variant: "destructive",
-        });
+        showErrorToast("请补全内容", "标题和正文不能为空。");
       }
       return;
     }
@@ -76,10 +72,9 @@ export default function DraftEditPage() {
       const result = await publishDraft(draftId);
       router.push(`/post/${result.data.id}`);
     } catch (err) {
-      toast({
+      showApiErrorToast(err, {
         title: "发布失败",
-        description: (err as Error).message,
-        variant: "destructive",
+        fallback: "发布失败，请稍后再试。",
       });
     } finally {
       setLoading(false);

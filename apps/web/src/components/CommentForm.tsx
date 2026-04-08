@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { createComment } from "@/services/commentApi";
 import { useUserStore } from "@/stores/userStore";
+import { getErrorMessage } from "@/lib/errorMessages";
 
 export default function CommentForm({ postId }: { postId: string }) {
   const router = useRouter();
@@ -30,7 +31,7 @@ export default function CommentForm({ postId }: { postId: string }) {
       setContent("");
       router.refresh();
     } catch (err) {
-      setError((err as Error).message);
+      setError(getErrorMessage(err, "评论失败，请稍后再试。"));
     } finally {
       setLoading(false);
     }

@@ -1,10 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Draft } from './draft.entity';
 import { CreateDraftDto } from './dto/create-draft.dto';
 import { UpdateDraftDto } from './dto/update-draft.dto';
 import { Post } from '../post/post.entity';
+import { AppException } from '../../common/exceptions/app.exception';
+import { ErrorCode } from '../../common/exceptions/error-codes';
 
 @Injectable()
 export class DraftService {
@@ -24,7 +26,9 @@ export class DraftService {
 
   async findById(authorId: string, id: string) {
     const draft = await this.draftRepo.findOne({ where: { id, authorId } });
-    if (!draft) throw new NotFoundException('Draft not found');
+    if (!draft) {
+      throw AppException.notFound(ErrorCode.DRAFT_NOT_FOUND, 'Draft not found');
+    }
     return draft;
   }
 

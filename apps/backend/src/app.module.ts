@@ -9,6 +9,7 @@ import databaseConfig from './config/database.config';
 import redisConfig from './config/redis.config';
 import jwtConfig from './config/jwt.config';
 import { AppController } from './app.controller';
+import { validateEnv } from './config/env.validation';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
 import { PostModule } from './modules/post/post.module';
@@ -31,6 +32,7 @@ import { AiModule } from './modules/ai/ai.module';
       isGlobal: true,
       envFilePath: ['.env', '.env.local'],
       load: [databaseConfig, redisConfig, jwtConfig],
+      validate: validateEnv,
     }),
     WinstonModule.forRoot({
       level: process.env.LOG_LEVEL || 'info',

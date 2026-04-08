@@ -8,14 +8,18 @@ import { fetchDrafts, publishDraft } from "@/services/draftApi";
 import { excerpt } from "@/lib/format";
 import { useUserStore } from "@/stores/userStore";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
-import { useToast } from "@/hooks/useToast";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@/components/ui/card";
+import { showApiErrorToast } from "@/lib/showApiErrorToast";
 
 export default function DraftListPage() {
   const router = useRouter();
   const user = useUserStore((state) => state.user);
   const hydrated = useUserStore((state) => state.hydrated);
-  const { toast } = useToast();
 
   const { data, isLoading } = useQuery({
     queryKey: ["drafts", user?.id],
@@ -42,10 +46,9 @@ export default function DraftListPage() {
       const result = await publishDraft(id);
       router.push(`/post/${result.data.id}`);
     } catch (err) {
-      toast({
+      showApiErrorToast(err, {
         title: "发布失败",
-        description: (err as Error).message,
-        variant: "destructive",
+        fallback: "发布失败，请稍后再试。",
       });
     }
   };

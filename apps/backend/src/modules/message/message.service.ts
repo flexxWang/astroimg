@@ -1,10 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Conversation } from './conversation.entity';
 import { Message } from './message.entity';
 import { User } from '../user/user.entity';
 import { MessageGateway } from './message.gateway';
+import { AppException } from '../../common/exceptions/app.exception';
+import { ErrorCode } from '../../common/exceptions/error-codes';
 
 @Injectable()
 export class MessageService {
@@ -17,6 +19,21 @@ export class MessageService {
     private readonly userRepo: Repository<User>,
     private readonly gateway: MessageGateway,
   ) {}
+
+  private ensureConversationAccess(
+    conversation: Conversation | null,
+    userId: string,
+  ) {
+    if (
+      !conversation ||
+      (conversation.userAId !== userId && conversation.userBId !== userId)
+    ) {
+      throw AppException.notFound(
+        ErrorCode.CONVERSATION_NOT_FOUND,
+        'Conversation not found',
+      );
+    }
+  }
 
   async listConversations(userId: string) {
     const conversations = await this.conversationRepo.find({
@@ -68,10 +85,7 @@ export class MessageService {
     const conversation = await this.conversationRepo.findOne({
       where: { id: conversationId },
     });
-    if (!conversation) throw new NotFoundException('Conversation not found');
-    if (conversation.userAId !== userId && conversation.userBId !== userId) {
-      throw new NotFoundException('Conversation not found');
-    }
+    this.ensureConversationAccess(conversation, userId);
 
     const qb = this.messageRepo
       .createQueryBuilder('m')
@@ -91,10 +105,7 @@ export class MessageService {
     const conversation = await this.conversationRepo.findOne({
       where: { id: conversationId },
     });
-    if (!conversation) throw new NotFoundException('Conversation not found');
-    if (conversation.userAId !== userId && conversation.userBId !== userId) {
-      throw new NotFoundException('Conversation not found');
-    }
+    this.ensureConversationAccess(conversation, userId);
 
     return this.messageRepo
       .createQueryBuilder('m')
@@ -140,10 +151,7 @@ export class MessageService {
     const conversation = await this.conversationRepo.findOne({
       where: { id: conversationId },
     });
-    if (!conversation) throw new NotFoundException('Conversation not found');
-    if (conversation.userAId !== userId && conversation.userBId !== userId) {
-      throw new NotFoundException('Conversation not found');
-    }
+    this.ensureConversationAccess(conversation, userId);
 
     await this.messageRepo.update(
       { conversationId, recipientId: userId, read: false },

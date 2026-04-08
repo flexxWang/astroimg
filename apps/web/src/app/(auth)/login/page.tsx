@@ -6,6 +6,8 @@ import Link from "next/link";
 import { Space_Grotesk } from "next/font/google";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { showApiErrorToast } from "@/lib/showApiErrorToast";
+import { showErrorToast } from "@/lib/showToastMessage";
 import { fetchMe, login } from "@/services/userApi";
 import { useUserStore } from "@/stores/userStore";
 import { useToast } from "@/hooks/useToast";
@@ -18,7 +20,7 @@ const spaceGrotesk = Space_Grotesk({
 export default function LoginPage() {
   const router = useRouter();
   const setUser = useUserStore((state) => state.setUser);
-  const { toast, hasToast } = useToast();
+  const { hasToast } = useToast();
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,11 +29,7 @@ export default function LoginPage() {
     event.preventDefault();
     if (!usernameOrEmail.trim() || !password.trim()) {
       if (!hasToast("请填写完整信息")) {
-        toast({
-          title: "请填写完整信息",
-          description: "用户名/邮箱和密码不能为空。",
-          variant: "destructive",
-        });
+        showErrorToast("请填写完整信息", "用户名/邮箱和密码不能为空。");
       }
       return;
     }
@@ -42,15 +40,9 @@ export default function LoginPage() {
       setUser(me.data);
       router.push("/");
     } catch (err) {
-      const message = (err as Error).message;
-      const desc =
-        message === "Invalid credentials"
-          ? "用户名或密码不正确，请重试。"
-          : message;
-      toast({
+      showApiErrorToast(err, {
         title: "登录失败",
-        description: desc,
-        variant: "destructive",
+        fallback: "登录失败，请稍后再试。",
       });
     } finally {
       setLoading(false);
@@ -58,7 +50,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className={`relative min-h-screen bg-slate-950 text-white ${spaceGrotesk.className}`}>
+    <div
+      className={`relative min-h-screen bg-slate-950 text-white ${spaceGrotesk.className}`}
+    >
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -left-32 top-10 h-[320px] w-[320px] rounded-full bg-sky-500/20 blur-[120px]" />
         <div className="absolute right-0 top-1/3 h-[380px] w-[380px] rounded-full bg-fuchsia-500/20 blur-[140px]" />

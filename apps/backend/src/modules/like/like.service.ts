@@ -1,10 +1,12 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Like } from './like.entity';
 import { Post } from '../post/post.entity';
 import { NotificationService } from '../notification/notification.service';
 import { User } from '../user/user.entity';
+import { AppException } from '../../common/exceptions/app.exception';
+import { ErrorCode } from '../../common/exceptions/error-codes';
 
 @Injectable()
 export class LikeService {
@@ -21,7 +23,7 @@ export class LikeService {
   async toggle(userId: string, postId: string) {
     const post = await this.postRepo.findOne({ where: { id: postId } });
     if (!post) {
-      throw new NotFoundException('Post not found');
+      throw AppException.notFound(ErrorCode.POST_NOT_FOUND, 'Post not found');
     }
 
     const existing = await this.likeRepo.findOne({

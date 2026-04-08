@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/useToast";
 import { fetchWorkLikeStatus, toggleWorkLike } from "@/services/workLikeApi";
 import { useUserStore } from "@/stores/userStore";
+import { showApiErrorToast } from "@/lib/showApiErrorToast";
+import { showErrorToast } from "@/lib/showToastMessage";
 
 export default function WorkLikeButton({
   workId,
@@ -14,7 +15,6 @@ export default function WorkLikeButton({
   initialCount?: number;
 }) {
   const user = useUserStore((state) => state.user);
-  const { toast } = useToast();
   const [liked, setLiked] = useState(false);
   const [count, setCount] = useState(initialCount);
 
@@ -27,11 +27,7 @@ export default function WorkLikeButton({
 
   const handleToggle = async () => {
     if (!user) {
-      toast({
-        title: "请先登录",
-        description: "登录后才能点赞作品。",
-        variant: "destructive",
-      });
+      showErrorToast("请先登录", "登录后才能点赞作品。");
       return;
     }
     try {
@@ -39,10 +35,9 @@ export default function WorkLikeButton({
       setLiked(result.data.liked);
       setCount(result.data.likeCount);
     } catch (err) {
-      toast({
+      showApiErrorToast(err, {
         title: "操作失败",
-        description: (err as Error).message,
-        variant: "destructive",
+        fallback: "操作失败，请稍后再试。",
       });
     }
   };

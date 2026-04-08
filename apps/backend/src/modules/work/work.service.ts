@@ -1,10 +1,12 @@
-import { BadRequestException, Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Work } from './work.entity';
 import { WorkType } from './work-type.entity';
 import { WorkDevice } from './work-device.entity';
 import { CreateWorkDto } from './dto/create-work.dto';
+import { AppException } from '../../common/exceptions/app.exception';
+import { ErrorCode } from '../../common/exceptions/error-codes';
 
 const DEFAULT_TYPES = [
   { code: 'nebula', name: '星云' },
@@ -175,31 +177,49 @@ export class WorkService implements OnModuleInit {
     if (typeId) {
       const exists = await this.typeRepo.findOne({ where: { id: typeId } });
       if (!exists) {
-        throw new BadRequestException('无效的作品类型');
+        throw AppException.badRequest(
+          ErrorCode.WORK_TYPE_INVALID,
+          '无效的作品类型',
+        );
       }
     }
 
     if (deviceId) {
       const exists = await this.deviceRepo.findOne({ where: { id: deviceId } });
       if (!exists) {
-        throw new BadRequestException('无效的设备类型');
+        throw AppException.badRequest(
+          ErrorCode.WORK_DEVICE_INVALID,
+          '无效的设备类型',
+        );
       }
     }
 
     if (dto.mediaType === 'image') {
       if (!dto.imageUrls?.length) {
-        throw new BadRequestException('作品图片不能为空');
+        throw AppException.badRequest(
+          ErrorCode.WORK_IMAGE_REQUIRED,
+          '作品图片不能为空',
+        );
       }
       if (dto.videoUrl) {
-        throw new BadRequestException('图片作品不能包含视频');
+        throw AppException.badRequest(
+          ErrorCode.WORK_IMAGE_VIDEO_CONFLICT,
+          '图片作品不能包含视频',
+        );
       }
     }
     if (dto.mediaType === 'video') {
       if (!dto.videoUrl) {
-        throw new BadRequestException('作品视频不能为空');
+        throw AppException.badRequest(
+          ErrorCode.WORK_VIDEO_REQUIRED,
+          '作品视频不能为空',
+        );
       }
       if (dto.imageUrls?.length) {
-        throw new BadRequestException('视频作品不能包含图片');
+        throw AppException.badRequest(
+          ErrorCode.WORK_IMAGE_VIDEO_CONFLICT,
+          '视频作品不能包含图片',
+        );
       }
     }
 

@@ -7,7 +7,12 @@ import { Button } from "@/components/ui/button";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import StreamPlanSections from "@/components/StreamPlanSections";
-import { useToast } from "@/hooks/useToast";
+import { showApiErrorToast } from "@/lib/showApiErrorToast";
+import {
+  showErrorToast,
+  showSuccessToast,
+  showToastMessage,
+} from "@/lib/showToastMessage";
 import { createDraft } from "@/services/draftApi";
 import { useUserStore } from "@/stores/userStore";
 import {
@@ -48,17 +53,17 @@ export default function AiCopilotClient({
 }: AiCopilotClientProps) {
   const router = useRouter();
   const user = useUserStore((state) => state.user);
-  const { toast } = useToast();
   const [input, setInput] = useState<AiCopilotInput>(defaultInput());
   const [loading, setLoading] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [pendingDelete, setPendingDelete] = useState<AiPlanHistoryItem | null>(null);
-  const [plan, setPlan] = useState<AiCopilotPlan | null>(null);
-  const [streamText, setStreamText] = useState("");
-  const [streamStatus, setStreamStatus] = useState<AiCopilotStreamStatus | null>(
+  const [pendingDelete, setPendingDelete] = useState<AiPlanHistoryItem | null>(
     null,
   );
+  const [plan, setPlan] = useState<AiCopilotPlan | null>(null);
+  const [streamText, setStreamText] = useState("");
+  const [streamStatus, setStreamStatus] =
+    useState<AiCopilotStreamStatus | null>(null);
   const pendingPlanRef = useRef<AiCopilotPlan | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const historyScrollRef = useRef<HTMLDivElement | null>(null);
@@ -118,11 +123,7 @@ export default function AiCopilotClient({
           return;
         }
         fetchNextPage().catch(() => {
-          toast({
-            title: "加载历史失败",
-            description: "历史计划加载失败，请稍后再试。",
-            variant: "destructive",
-          });
+          showErrorToast("加载历史失败", "历史计划加载失败，请稍后再试。");
         });
       },
       {
@@ -134,7 +135,7 @@ export default function AiCopilotClient({
 
     observer.observe(target);
     return () => observer.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage, toast]);
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   const providerLabel = (provider?: AiCopilotPlan["provider"]) => {
     if (provider === "openai" || provider === "openrouter") {
@@ -219,9 +220,10 @@ export default function AiCopilotClient({
     abortRef.current = null;
     resetStreamingState();
     setLoading(false);
-    toast({
+    showToastMessage({
       title: "已取消生成",
       description: "本次 AI 观测计划已停止生成。",
+      dedupeKey: "ai-cancelled",
     });
   };
 
@@ -236,16 +238,16 @@ export default function AiCopilotClient({
         title: plan.title,
         content: buildDraftContent(plan),
       });
-      toast({
-        title: "草稿已保存",
-        description: "已保存到草稿箱，你可以继续编辑后再发布。",
-      });
+      showSuccessToast(
+        "草稿已保存",
+        "已保存到草稿箱，你可以继续编辑后再发布。",
+        "ai-draft-saved",
+      );
       router.push(`/drafts/${result.data.id}`);
     } catch (err) {
-      toast({
+      showApiErrorToast(err, {
         title: "保存草稿失败",
-        description: (err as Error).message,
-        variant: "destructive",
+        fallback: "保存草稿失败，请稍后再试。",
       });
     } finally {
       setSavingDraft(false);
@@ -266,15 +268,15 @@ export default function AiCopilotClient({
       }
       await refetch();
       setPendingDelete(null);
-      toast({
-        title: "已删除",
-        description: "这条观测计划已经从历史中移除。",
-      });
+      showSuccessToast(
+        "已删除",
+        "这条观测计划已经从历史中移除。",
+        `ai-history-deleted-${id}`,
+      );
     } catch (err) {
-      toast({
+      showApiErrorToast(err, {
         title: "删除失败",
-        description: (err as Error).message,
-        variant: "destructive",
+        fallback: "删除失败，请稍后再试。",
       });
     } finally {
       setDeletingId(null);
@@ -287,11 +289,7 @@ export default function AiCopilotClient({
       return;
     }
     if (!canSubmit) {
-      toast({
-        title: "请补全参数",
-        description: "地点、设备、开始时间、结束时间为必填。",
-        variant: "destructive",
-      });
+      showErrorToast("请补全参数", "地点、设备、开始时间、结束时间为必填。");
       return;
     }
 
@@ -307,48 +305,47 @@ export default function AiCopilotClient({
         startTime: new Date(input.startTime).toISOString(),
         endTime: new Date(input.endTime).toISOString(),
       };
-      await streamAiPlan(payload, {
-        onStatus: (status) => {
-          setStreamStatus(status);
-          if (status.stage === "fallback") {
-            toast({
-              title: "已切换兜底",
-              description: formatFallbackReason(status.reason),
-              variant: "destructive",
-            });
-          }
+      await streamAiPlan(
+        payload,
+        {
+          onStatus: (status) => {
+            setStreamStatus(status);
+            if (status.stage === "fallback") {
+              showErrorToast(
+                "已切换兜底",
+                formatFallbackReason(status.reason),
+                `ai-fallback-${status.reason ?? "unknown"}`,
+              );
+            }
+          },
+          onDelta: (text) => {
+            setStreamText((prev) => prev + text);
+          },
+          onResult: (result) => {
+            pendingPlanRef.current = result;
+          },
+          onError: (message) => {
+            showErrorToast("流式生成失败", message, "ai-stream-failed");
+          },
+          onDone: () => {
+            if (pendingPlanRef.current) {
+              setPlan(pendingPlanRef.current);
+              pendingPlanRef.current = null;
+              setStreamStatus(null);
+              setStreamText("");
+              refetch();
+            }
+          },
         },
-        onDelta: (text) => {
-          setStreamText((prev) => prev + text);
-        },
-        onResult: (result) => {
-          pendingPlanRef.current = result;
-        },
-        onError: (message) => {
-          toast({
-            title: "流式生成失败",
-            description: message,
-            variant: "destructive",
-          });
-        },
-        onDone: () => {
-          if (pendingPlanRef.current) {
-            setPlan(pendingPlanRef.current);
-            pendingPlanRef.current = null;
-            setStreamStatus(null);
-            setStreamText("");
-            refetch();
-          }
-        },
-      }, { signal: abortRef.current.signal });
+        { signal: abortRef.current.signal },
+      );
     } catch (err) {
       if ((err as Error).name === "AbortError") {
         return;
       }
-      toast({
+      showApiErrorToast(err, {
         title: "生成失败",
-        description: (err as Error).message,
-        variant: "destructive",
+        fallback: "生成失败，请稍后再试。",
       });
     } finally {
       abortRef.current = null;
@@ -389,7 +386,9 @@ export default function AiCopilotClient({
             />
           </div>
           <div className="space-y-2">
-            <label className="text-xs text-muted-foreground">设备型号（可选）</label>
+            <label className="text-xs text-muted-foreground">
+              设备型号（可选）
+            </label>
             <Input
               value={input.deviceModel ?? ""}
               onChange={(e) =>
@@ -459,7 +458,9 @@ export default function AiCopilotClient({
             </div>
           </div>
           <div className="space-y-2">
-            <label className="text-xs text-muted-foreground">可用时长（分钟）</label>
+            <label className="text-xs text-muted-foreground">
+              可用时长（分钟）
+            </label>
             <Input
               type="number"
               min={15}
@@ -536,7 +537,9 @@ export default function AiCopilotClient({
                       </span>
                     ) : null}
                   </div>
-                  <p className="text-sm text-muted-foreground">{plan.summary}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {plan.summary}
+                  </p>
                   <div className="pt-2">
                     <Button
                       type="button"
@@ -550,7 +553,10 @@ export default function AiCopilotClient({
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
                   {plan.targets.map((target) => (
-                    <div key={target.name} className="rounded-xl border bg-white p-3">
+                    <div
+                      key={target.name}
+                      className="rounded-xl border bg-white p-3"
+                    >
                       <div className="text-sm font-medium">{target.name}</div>
                       <div className="mt-1 text-xs text-muted-foreground">
                         {target.reason}
@@ -587,9 +593,13 @@ export default function AiCopilotClient({
           <div className="rounded-2xl border bg-white/80 p-5 shadow-sm">
             <h3 className="text-base font-semibold">历史计划</h3>
             {history.length === 0 && isHistoryFetching ? (
-              <div className="mt-2 text-sm text-muted-foreground">历史计划加载中...</div>
+              <div className="mt-2 text-sm text-muted-foreground">
+                历史计划加载中...
+              </div>
             ) : history.length === 0 ? (
-              <div className="mt-2 text-sm text-muted-foreground">暂无历史计划</div>
+              <div className="mt-2 text-sm text-muted-foreground">
+                暂无历史计划
+              </div>
             ) : (
               <div
                 ref={historyScrollRef}

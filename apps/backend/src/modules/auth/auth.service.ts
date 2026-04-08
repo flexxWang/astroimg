@@ -1,9 +1,11 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UserService } from '../user/user.service';
 import { hashPassword, comparePassword } from '../../common/utils/crypto';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { AppException } from '../../common/exceptions/app.exception';
+import { ErrorCode } from '../../common/exceptions/error-codes';
 
 @Injectable()
 export class AuthService {
@@ -15,12 +17,18 @@ export class AuthService {
   async register(dto: RegisterDto) {
     const exists = await this.userService.findByUsernameOrEmail(dto.username);
     if (exists) {
-      throw new ConflictException('Username already exists');
+      throw AppException.conflict(
+        ErrorCode.USERNAME_ALREADY_EXISTS,
+        'Username already exists',
+      );
     }
 
     const existsEmail = await this.userService.findByUsernameOrEmail(dto.email);
     if (existsEmail) {
-      throw new ConflictException('Email already exists');
+      throw AppException.conflict(
+        ErrorCode.EMAIL_ALREADY_EXISTS,
+        'Email already exists',
+      );
     }
 
     const passwordHash = await hashPassword(dto.password);
@@ -39,12 +47,18 @@ export class AuthService {
       true,
     );
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw AppException.unauthorized(
+        ErrorCode.INVALID_CREDENTIALS,
+        'Invalid credentials',
+      );
     }
 
     const isValid = await comparePassword(dto.password, user.passwordHash);
     if (!isValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw AppException.unauthorized(
+        ErrorCode.INVALID_CREDENTIALS,
+        'Invalid credentials',
+      );
     }
 
     return this.signToken(user.id, user.username, user.email);

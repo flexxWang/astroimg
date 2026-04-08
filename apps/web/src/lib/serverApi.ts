@@ -3,6 +3,12 @@ const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ||
   "http://127.0.0.1:4000";
 
+type ServerErrorPayload = {
+  message?: string | string[];
+  errorCode?: string;
+  details?: unknown;
+};
+
 export async function serverFetch<T>(
   path: string,
   options: RequestInit & { timeout?: number } = {},
@@ -39,18 +45,30 @@ export async function serverFetch<T>(
       } catch {
         payload = await res.text();
       }
+      const payloadMessage =
+        payload && typeof payload === "object"
+          ? (payload as ServerErrorPayload).message
+          : undefined;
       const message =
-        typeof payload?.message === "string"
-          ? payload.message
+        Array.isArray(payloadMessage)
+          ? payloadMessage.join("、")
+          : typeof payloadMessage === "string"
+            ? payloadMessage
           : typeof payload === "string"
             ? payload
             : `Request failed: ${res.status}`;
       const error = new Error(message) as Error & {
         status?: number;
         data?: unknown;
+        errorCode?: string;
+        details?: unknown;
       };
       (error as any).status = res.status;
       (error as any).data = payload;
+      if (payload && typeof payload === "object") {
+        (error as any).errorCode = (payload as ServerErrorPayload).errorCode;
+        (error as any).details = (payload as ServerErrorPayload).details;
+      }
       throw error;
     }
     return (await res.json()) as T;

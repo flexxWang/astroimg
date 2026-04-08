@@ -3,14 +3,19 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
-import { fetchConversations, markConversationRead, searchMessages, sendMessage } from "@/services/messageApi";
+import {
+  fetchConversations,
+  markConversationRead,
+  searchMessages,
+  sendMessage,
+} from "@/services/messageApi";
 import { searchUsers } from "@/services/userSearchApi";
 import { useUserStore } from "@/stores/userStore";
 import { getSocket } from "@/lib/socket";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/useToast";
+import { showApiErrorToast } from "@/lib/showApiErrorToast";
 import { useInfiniteMessages } from "@/hooks/useInfiniteMessages";
 
 export default function MessagesPage() {
@@ -19,9 +24,10 @@ export default function MessagesPage() {
   const user = useUserStore((state) => state.user);
   const hydrated = useUserStore((state) => state.hydrated);
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [recipientOverride, setRecipientOverride] = useState<string | null>(null);
+  const [recipientOverride, setRecipientOverride] = useState<string | null>(
+    null,
+  );
   const [search, setSearch] = useState("");
   const [content, setContent] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -107,7 +113,7 @@ export default function MessagesPage() {
       refetchConversations();
       if (activeId) {
         reload();
-        markConversationRead(activeId).catch(() => { });
+        markConversationRead(activeId).catch(() => {});
       }
     };
     const readHandler = () => {
@@ -127,7 +133,7 @@ export default function MessagesPage() {
     if (!activeId || !user) return;
     markConversationRead(activeId)
       .then(() => refetchConversations())
-      .catch(() => { });
+      .catch(() => {});
   }, [activeId, refetchConversations, user]);
 
   useEffect(() => {
@@ -191,10 +197,9 @@ export default function MessagesPage() {
       scrollToBottom();
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
     } catch (err) {
-      toast({
+      showApiErrorToast(err, {
         title: "发送失败",
-        description: (err as Error).message,
-        variant: "destructive",
+        fallback: "发送失败，请稍后再试。",
       });
     }
   };
@@ -259,7 +264,9 @@ export default function MessagesPage() {
                     onClick={() => handleStartChat(u.id)}
                   >
                     <span>{u.username}</span>
-                    <span className="text-xs text-muted-foreground">发起聊天</span>
+                    <span className="text-xs text-muted-foreground">
+                      发起聊天
+                    </span>
                   </button>
                 ))}
                 {(searchData?.data || []).length === 0 ? (
@@ -274,8 +281,9 @@ export default function MessagesPage() {
             {conversations.map((c) => (
               <button
                 key={c.id}
-                className={`w-full rounded-xl px-3 py-2 text-left ${c.id === activeId ? "bg-slate-100" : "hover:bg-slate-50"
-                  }`}
+                className={`w-full rounded-xl px-3 py-2 text-left ${
+                  c.id === activeId ? "bg-slate-100" : "hover:bg-slate-50"
+                }`}
                 onClick={() => {
                   setRecipientOverride(null);
                   setActiveId(c.id);
@@ -285,8 +293,9 @@ export default function MessagesPage() {
                   <div className="flex items-center gap-2 text-sm font-medium">
                     <span>{c.otherUsername}</span>
                     <span
-                      className={`h-2 w-2 rounded-full ${c.online ? "bg-emerald-500" : "bg-slate-300"
-                        }`}
+                      className={`h-2 w-2 rounded-full ${
+                        c.online ? "bg-emerald-500" : "bg-slate-300"
+                      }`}
                     />
                   </div>
                   {c.unreadCount ? (
@@ -310,26 +319,26 @@ export default function MessagesPage() {
               : recipientOverride
                 ? "新会话"
                 : "选择会话"}
-          {activeConversation ? (
-            <Input
-              placeholder="搜索消息"
-              value={messageSearch}
-              onChange={(e) => setMessageSearch(e.target.value)}
-              className="max-w-[200px]"
-            />
-          ) : null}
+            {activeConversation ? (
+              <Input
+                placeholder="搜索消息"
+                value={messageSearch}
+                onChange={(e) => setMessageSearch(e.target.value)}
+                className="max-w-[200px]"
+              />
+            ) : null}
           </div>
           <div
             ref={scrollRef}
             className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3"
-          onScroll={() => {
-            const el = scrollRef.current;
-            if (!el || debouncedMessageSearch.length > 0) return;
-            if (el.scrollTop === 0 && hasMore) {
-              handleLoadMore();
-            }
-          }}
-        >
+            onScroll={() => {
+              const el = scrollRef.current;
+              if (!el || debouncedMessageSearch.length > 0) return;
+              if (el.scrollTop === 0 && hasMore) {
+                handleLoadMore();
+              }
+            }}
+          >
             {loadingMore ? (
               <div className="text-center text-xs text-muted-foreground">
                 加载中...
@@ -340,69 +349,74 @@ export default function MessagesPage() {
                 没有更多了
               </div>
             ) : null}
-          {(debouncedMessageSearch.length > 0 ? (searchMsgData?.data ?? []) : messagesList).map(
-            (msg, index, list) => {
-                const formatDate = (date: Date) => {
-                  const now = new Date();
-                  const diffMs = now.getTime() - date.getTime();
-                  const diffMinutes = Math.floor(diffMs / (60 * 1000));
-                  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+            {(debouncedMessageSearch.length > 0
+              ? (searchMsgData?.data ?? [])
+              : messagesList
+            ).map((msg, index, list) => {
+              const formatDate = (date: Date) => {
+                const now = new Date();
+                const diffMs = now.getTime() - date.getTime();
+                const diffMinutes = Math.floor(diffMs / (60 * 1000));
+                const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
 
-                  if (diffDays === 0) {
-                    if (diffMinutes < 5) return "刚刚";
-                    return date.toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    });
-                  }
-                  if (diffDays === 1) return "昨天";
-                  if (diffDays === 2) return "前天";
-                  return date.toLocaleDateString();
-                };
+                if (diffDays === 0) {
+                  if (diffMinutes < 5) return "刚刚";
+                  return date.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
+                }
+                if (diffDays === 1) return "昨天";
+                if (diffDays === 2) return "前天";
+                return date.toLocaleDateString();
+              };
 
-                const currentDate = msg.createdAt
-                  ? formatDate(new Date(msg.createdAt))
-                  : "";
-                const prev = list[index - 1];
-                const prevDate = prev?.createdAt
-                  ? formatDate(new Date(prev.createdAt))
-                  : "";
-                const showDivider = currentDate && currentDate !== prevDate;
+              const currentDate = msg.createdAt
+                ? formatDate(new Date(msg.createdAt))
+                : "";
+              const prev = list[index - 1];
+              const prevDate = prev?.createdAt
+                ? formatDate(new Date(prev.createdAt))
+                : "";
+              const showDivider = currentDate && currentDate !== prevDate;
 
-                return (
-                  <div key={msg.id} className="space-y-2">
-                    {showDivider ? (
-                      <div className="w-full text-center text-xs text-muted-foreground my-2">
-                        {currentDate}
-                      </div>
-                    ) : null}
+              return (
+                <div key={msg.id} className="space-y-2">
+                  {showDivider ? (
+                    <div className="w-full text-center text-xs text-muted-foreground my-2">
+                      {currentDate}
+                    </div>
+                  ) : null}
+                  <div
+                    className={`flex ${
+                      msg.senderId === user.id ? "justify-end" : "justify-start"
+                    }`}
+                  >
                     <div
-                      className={`flex ${msg.senderId === user.id
-                          ? "justify-end"
-                          : "justify-start"
-                        }`}
+                      className={`max-w-[70%] rounded-2xl px-4 py-2 text-sm ${
+                        msg.senderId === user.id
+                          ? "bg-slate-900 text-white"
+                          : "bg-slate-100 text-slate-900"
+                      }`}
                     >
-                      <div
-                        className={`max-w-[70%] rounded-2xl px-4 py-2 text-sm ${msg.senderId === user.id
-                            ? "bg-slate-900 text-white"
-                            : "bg-slate-100 text-slate-900"
-                          }`}
-                      >
-                        {msg.content}
-                        {msg.senderId === user.id ? (
-                          <div className="mt-1 text-[10px] text-white/70 text-right">
-                            {msg.read ? "已读" : "未读"}
-                          </div>
-                        ) : null}
-                      </div>
+                      {msg.content}
+                      {msg.senderId === user.id ? (
+                        <div className="mt-1 text-[10px] text-white/70 text-right">
+                          {msg.read ? "已读" : "未读"}
+                        </div>
+                      ) : null}
                     </div>
                   </div>
-                );
-              },
-            )}
-          {(debouncedMessageSearch.length > 0 ? (searchMsgData?.data ?? []).length === 0 : messagesList.length === 0) ? (
-            <div className="text-sm text-muted-foreground">暂无消息</div>
-          ) : null}
+                </div>
+              );
+            })}
+            {(
+              debouncedMessageSearch.length > 0
+                ? (searchMsgData?.data ?? []).length === 0
+                : messagesList.length === 0
+            ) ? (
+              <div className="text-sm text-muted-foreground">暂无消息</div>
+            ) : null}
             <div ref={bottomRef} />
           </div>
           <div className="border-t p-4">
