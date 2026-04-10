@@ -10,9 +10,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
-import { PageQueryDto } from '../../common/dto/page-query.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { PageQueryDto } from '@/common/dto/page-query.dto';
+import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { AiService } from './ai.service';
 import { CreateCopilotPlanDto } from './dto/create-copilot-plan.dto';
 

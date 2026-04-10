@@ -1,6 +1,14 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { MessageService } from './message.service';
 import { SendMessageDto } from './dto/send-message.dto';
 import { MarkReadDto } from './dto/mark-read.dto';
@@ -37,7 +45,11 @@ export class MessageController {
 
   @Post('send')
   send(@Body() dto: SendMessageDto, @CurrentUser() user: { id: string }) {
-    return this.messageService.sendMessage(user.id, dto.recipientId, dto.content);
+    return this.messageService.sendMessage(
+      user.id,
+      dto.recipientId,
+      dto.content,
+    );
   }
 
   @Post('read')

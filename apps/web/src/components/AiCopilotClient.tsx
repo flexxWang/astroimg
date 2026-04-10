@@ -244,11 +244,7 @@ export default function AiCopilotClient({
         "ai-draft-saved",
       );
       router.push(`/drafts/${result.data.id}`);
-    } catch (err) {
-      showApiErrorToast(err, {
-        title: "保存草稿失败",
-        fallback: "保存草稿失败，请稍后再试。",
-      });
+    } catch {
     } finally {
       setSavingDraft(false);
     }
@@ -273,11 +269,7 @@ export default function AiCopilotClient({
         "这条观测计划已经从历史中移除。",
         `ai-history-deleted-${id}`,
       );
-    } catch (err) {
-      showApiErrorToast(err, {
-        title: "删除失败",
-        fallback: "删除失败，请稍后再试。",
-      });
+    } catch {
     } finally {
       setDeletingId(null);
     }

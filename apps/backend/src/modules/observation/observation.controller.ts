@@ -1,7 +1,13 @@
-import { Body, Controller, Get, Post as HttpPost, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post as HttpPost,
+  UseGuards,
+} from '@nestjs/common';
 import { ObservationService } from './observation.service';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { CreateObservationDto } from './dto/create-observation.dto';
 
 @Controller('observation-points')

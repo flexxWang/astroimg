@@ -1,0 +1,21 @@
+{
+  "name": "@astroimg/shared",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  },
+  "exports": {
+    "./error-codes": {
+      "types": "./dist/error-codes.d.ts",
+      "default": "./dist/error-codes.js"
+    }
+  }
+}

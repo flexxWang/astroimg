@@ -5,8 +5,7 @@ import { Conversation } from './conversation.entity';
 import { Message } from './message.entity';
 import { User } from '../user/user.entity';
 import { MessageGateway } from './message.gateway';
-import { AppException } from '../../common/exceptions/app.exception';
-import { ErrorCode } from '../../common/exceptions/error-codes';
+import { AppException, ErrorCode } from '@/common/exceptions';
 
 @Injectable()
 export class MessageService {
@@ -28,10 +27,7 @@ export class MessageService {
       !conversation ||
       (conversation.userAId !== userId && conversation.userBId !== userId)
     ) {
-      throw AppException.notFound(
-        ErrorCode.CONVERSATION_NOT_FOUND,
-        'Conversation not found',
-      );
+      throw AppException.notFound(ErrorCode.CONVERSATION_NOT_FOUND);
     }
   }
 

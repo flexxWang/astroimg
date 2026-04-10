@@ -14,7 +14,6 @@ import {
   CardFooter,
   CardHeader,
 } from "@/components/ui/card";
-import { showApiErrorToast } from "@/lib/showApiErrorToast";
 
 export default function DraftListPage() {
   const router = useRouter();
@@ -45,12 +44,7 @@ export default function DraftListPage() {
     try {
       const result = await publishDraft(id);
       router.push(`/post/${result.data.id}`);
-    } catch (err) {
-      showApiErrorToast(err, {
-        title: "发布失败",
-        fallback: "发布失败，请稍后再试。",
-      });
-    }
+    } catch {}
   };
 
   return (

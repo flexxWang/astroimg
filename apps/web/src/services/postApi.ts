@@ -47,5 +47,9 @@ export function createPost(payload: { title: string; content: string }) {
   return apiFetch<PostListItem>("/posts", {
     method: "POST",
     body: JSON.stringify(payload),
+    errorToast: {
+      title: "发布失败",
+      fallback: "发布失败，请稍后再试。",
+    },
   });
 }

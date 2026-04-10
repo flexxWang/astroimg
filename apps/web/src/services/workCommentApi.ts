@@ -12,5 +12,9 @@ export function createWorkComment(
   return apiFetch<WorkComment>(`/works/${workId}/comments`, {
     method: "POST",
     body: JSON.stringify(payload),
+    errorToast: {
+      title: "评论失败",
+      fallback: "评论失败，请稍后再试。",
+    },
   });
 }

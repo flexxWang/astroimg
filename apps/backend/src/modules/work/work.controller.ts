@@ -1,9 +1,17 @@
-import { Body, Controller, Get, Param, Post as HttpPost, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post as HttpPost,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { WorkService } from './work.service';
 import { CreateWorkDto } from './dto/create-work.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { PageQueryDto } from '../../common/dto/page-query.dto';
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { PageQueryDto } from '@/common/dto/page-query.dto';
+import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 
 @Controller('works')
 export class WorkController {

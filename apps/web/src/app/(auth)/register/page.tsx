@@ -6,7 +6,6 @@ import Link from "next/link";
 import { Space_Grotesk } from "next/font/google";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { showApiErrorToast } from "@/lib/showApiErrorToast";
 import { showErrorToast } from "@/lib/showToastMessage";
 import { fetchMe, register } from "@/services/userApi";
 import { useUserStore } from "@/stores/userStore";
@@ -40,11 +39,7 @@ export default function RegisterPage() {
       const me = await fetchMe();
       setUser(me.data);
       router.push("/");
-    } catch (err) {
-      showApiErrorToast(err, {
-        title: "注册失败",
-        fallback: "注册失败，请稍后再试。",
-      });
+    } catch {
     } finally {
       setLoading(false);
     }

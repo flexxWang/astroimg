@@ -1,12 +1,17 @@
-import { Body, Controller, Get, Param, Post as HttpPost, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post as HttpPost,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { PostService } from './post.service';
 import { CreatePostDto } from './dto/create-post.dto';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import {
-  KeywordPageQueryDto,
-  PageQueryDto,
-} from '../../common/dto/page-query.dto';
+import { CurrentUser } from '@/common/decorators/current-user.decorator';
+import { KeywordPageQueryDto, PageQueryDto } from '@/common/dto/page-query.dto';
+import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 
 @Controller('posts')
 export class PostController {

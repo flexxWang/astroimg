@@ -177,11 +177,7 @@ export default function CreateWorkPage() {
         deviceId,
       });
       router.push("/");
-    } catch (err) {
-      showApiErrorToast(err, {
-        title: "发布失败",
-        fallback: "发布失败，请稍后再试。",
-      });
+    } catch {
     } finally {
       setPublishing(false);
     }

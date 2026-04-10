@@ -15,5 +15,6 @@ export function createComment(postId: string, payload: { content: string }) {
   return apiFetch<CommentItem>(`/posts/${postId}/comments`, {
     method: "POST",
     body: JSON.stringify(payload),
+    errorToast: false,
   });
 }

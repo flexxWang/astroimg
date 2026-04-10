@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@astroimg/shared": "workspace:*",
     "@chenglou/pretext": "^0.0.4",
     "@tanstack/react-query": "^5.90.21",
     "@tiptap/extension-character-count": "^3.20.1",

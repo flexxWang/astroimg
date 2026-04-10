@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useUserStore } from "@/stores/userStore";
 import { createWorkComment } from "@/services/workCommentApi";
-import { showApiErrorToast } from "@/lib/showApiErrorToast";
 
 export default function WorkCommentForm({ workId }: { workId: string }) {
   const router = useRouter();
@@ -28,11 +27,7 @@ export default function WorkCommentForm({ workId }: { workId: string }) {
       await createWorkComment(workId, { content });
       setContent("");
       router.refresh();
-    } catch (err) {
-      showApiErrorToast(err, {
-        title: "评论失败",
-        fallback: "评论失败，请稍后再试。",
-      });
+    } catch {
     } finally {
       setLoading(false);
     }

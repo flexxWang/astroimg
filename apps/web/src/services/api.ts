@@ -9,12 +9,18 @@ import {
   type ApiResponse,
   type RequestError,
 } from "@/lib/apiResponse";
+import {
+  showApiErrorToast,
+  type ShowApiErrorToastOptions,
+} from "@/lib/showApiErrorToast";
+import { ErrorCode } from "@astroimg/shared/error-codes";
 
 type JsonLike = object | Array<unknown> | number | boolean | null;
 
 interface ApiOptions extends Omit<RequestInit, "body"> {
   body?: BodyInit | JsonLike;
   timeout?: number;
+  errorToast?: false | ShowApiErrorToastOptions;
 }
 
 export type ApiError = RequestError;
@@ -32,8 +38,23 @@ export function getApiErrorCode(error: unknown) {
   return (error as ApiError | undefined)?.errorCode;
 }
 
+export function getApiErrorStatus(error: unknown) {
+  return (error as ApiError | undefined)?.status;
+}
+
 export function isApiErrorCode(error: unknown, code: string) {
   return getApiErrorCode(error) === code;
+}
+
+function showGlobalErrorToast(
+  error: ApiError,
+  errorToast?: false | ShowApiErrorToastOptions,
+) {
+  if (errorToast === false || typeof window === "undefined") {
+    return;
+  }
+
+  showApiErrorToast(error, errorToast ?? {});
 }
 
 export async function apiFetch<T>(path: string, options: ApiOptions = {}) {
@@ -125,10 +146,33 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}) {
     if ((err as Error).name === "AbortError") {
       const error: ApiError = new Error("请求超时");
       error.status = 408;
-      error.errorCode = "REQUEST_TIMEOUT";
+      error.errorCode = ErrorCode.REQUEST_TIMEOUT;
+      showGlobalErrorToast(error, options.errorToast);
       throw error;
     }
-    throw err;
+
+    const error =
+      err instanceof Error
+        ? (err as ApiError)
+        : createRequestError(null, "网络异常，请稍后再试。");
+
+    if (
+      !error.status &&
+      !error.errorCode &&
+      error.message &&
+      error.message !== "Request failed"
+    ) {
+      const normalizedError = createRequestError(
+        error.message,
+        "网络异常，请稍后再试。",
+      );
+      normalizedError.errorCode = ErrorCode.NETWORK_ERROR;
+      showGlobalErrorToast(normalizedError, options.errorToast);
+      throw normalizedError;
+    }
+
+    showGlobalErrorToast(error, options.errorToast);
+    throw error;
   } finally {
     clearTimer(timer);
   }

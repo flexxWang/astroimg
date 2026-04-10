@@ -15,7 +15,6 @@ import { getSocket } from "@/lib/socket";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { showApiErrorToast } from "@/lib/showApiErrorToast";
 import { useInfiniteMessages } from "@/hooks/useInfiniteMessages";
 
 export default function MessagesPage() {
@@ -196,12 +195,7 @@ export default function MessagesPage() {
       appendMessage(result.data);
       scrollToBottom();
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
-    } catch (err) {
-      showApiErrorToast(err, {
-        title: "发送失败",
-        fallback: "发送失败，请稍后再试。",
-      });
-    }
+    } catch {}
   };
 
   useEffect(() => {

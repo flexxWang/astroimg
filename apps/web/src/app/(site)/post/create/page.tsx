@@ -10,7 +10,6 @@ import { useUserStore } from "@/stores/userStore";
 import { createPost } from "@/services/postApi";
 import { createDraft, publishDraft, updateDraft } from "@/services/draftApi";
 import { useToast } from "@/hooks/useToast";
-import { showApiErrorToast } from "@/lib/showApiErrorToast";
 import { showErrorToast, showSuccessToast } from "@/lib/showToastMessage";
 
 export default function CreatePostPage() {
@@ -58,11 +57,7 @@ export default function CreatePostPage() {
         const result = await createPost({ title, content });
         router.push(`/post/${result.data.id}`);
       }
-    } catch (err) {
-      showApiErrorToast(err, {
-        title: "发布失败",
-        fallback: "发布失败，请稍后再试。",
-      });
+    } catch {
     } finally {
       setLoading(false);
     }
@@ -83,11 +78,7 @@ export default function CreatePostPage() {
       }
       lastSavedRef.current = { title, content };
       showSuccessToast("草稿已保存");
-    } catch (err) {
-      showApiErrorToast(err, {
-        title: "保存失败",
-        fallback: "保存失败，请稍后再试。",
-      });
+    } catch {
     } finally {
       setLoading(false);
     }

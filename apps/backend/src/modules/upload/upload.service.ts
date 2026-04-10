@@ -1,8 +1,9 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Client } from 'minio';
 import { randomUUID } from 'crypto';
 import path from 'path';
+import { AppException, ErrorCode } from '@/common/exceptions';
 
 @Injectable()
 export class UploadService {
@@ -60,7 +61,7 @@ export class UploadService {
       const fileUrl = `${this.publicBase}/${this.bucket}/${objectKey}`;
       return { uploadUrl, fileUrl, objectKey };
     } catch (error) {
-      throw new InternalServerErrorException('Failed to sign upload');
+      throw AppException.internal(ErrorCode.UPLOAD_SIGN_FAILED);
     }
   }
 }

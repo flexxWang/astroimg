@@ -21,6 +21,7 @@ export type RequestError = Error & {
   data?: unknown;
   errorCode?: string;
   details?: unknown;
+  toastShown?: boolean;
 };
 
 export function isSuccessCode(code: number) {

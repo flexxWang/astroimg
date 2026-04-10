@@ -5,8 +5,7 @@ import { Work } from './work.entity';
 import { WorkType } from './work-type.entity';
 import { WorkDevice } from './work-device.entity';
 import { CreateWorkDto } from './dto/create-work.dto';
-import { AppException } from '../../common/exceptions/app.exception';
-import { ErrorCode } from '../../common/exceptions/error-codes';
+import { AppException, ErrorCode } from '@/common/exceptions';
 
 const DEFAULT_TYPES = [
   { code: 'nebula', name: '星云' },
@@ -85,14 +84,14 @@ export class WorkService implements OnModuleInit {
       parsedImages = row.work_image_urls;
     } else if (row.work_imageUrls && Array.isArray(row.work_imageUrls)) {
       parsedImages = row.work_imageUrls;
-    } else if (typeof row.work_imageUrls === "string") {
+    } else if (typeof row.work_imageUrls === 'string') {
       try {
         const value = JSON.parse(row.work_imageUrls);
         if (Array.isArray(value)) parsedImages = value;
       } catch {
         parsedImages = [];
       }
-    } else if (typeof row.work_image_urls === "string") {
+    } else if (typeof row.work_image_urls === 'string') {
       try {
         const value = JSON.parse(row.work_image_urls);
         if (Array.isArray(value)) parsedImages = value;
@@ -177,49 +176,31 @@ export class WorkService implements OnModuleInit {
     if (typeId) {
       const exists = await this.typeRepo.findOne({ where: { id: typeId } });
       if (!exists) {
-        throw AppException.badRequest(
-          ErrorCode.WORK_TYPE_INVALID,
-          '无效的作品类型',
-        );
+        throw AppException.badRequest(ErrorCode.WORK_TYPE_INVALID);
       }
     }
 
     if (deviceId) {
       const exists = await this.deviceRepo.findOne({ where: { id: deviceId } });
       if (!exists) {
-        throw AppException.badRequest(
-          ErrorCode.WORK_DEVICE_INVALID,
-          '无效的设备类型',
-        );
+        throw AppException.badRequest(ErrorCode.WORK_DEVICE_INVALID);
       }
     }
 
     if (dto.mediaType === 'image') {
       if (!dto.imageUrls?.length) {
-        throw AppException.badRequest(
-          ErrorCode.WORK_IMAGE_REQUIRED,
-          '作品图片不能为空',
-        );
+        throw AppException.badRequest(ErrorCode.WORK_IMAGE_REQUIRED);
       }
       if (dto.videoUrl) {
-        throw AppException.badRequest(
-          ErrorCode.WORK_IMAGE_VIDEO_CONFLICT,
-          '图片作品不能包含视频',
-        );
+        throw AppException.badRequest(ErrorCode.WORK_IMAGE_VIDEO_CONFLICT);
       }
     }
     if (dto.mediaType === 'video') {
       if (!dto.videoUrl) {
-        throw AppException.badRequest(
-          ErrorCode.WORK_VIDEO_REQUIRED,
-          '作品视频不能为空',
-        );
+        throw AppException.badRequest(ErrorCode.WORK_VIDEO_REQUIRED);
       }
       if (dto.imageUrls?.length) {
-        throw AppException.badRequest(
-          ErrorCode.WORK_IMAGE_VIDEO_CONFLICT,
-          '视频作品不能包含图片',
-        );
+        throw AppException.badRequest(ErrorCode.WORK_IMAGE_VIDEO_CONFLICT);
       }
     }
 

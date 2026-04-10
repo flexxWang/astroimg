@@ -5,8 +5,7 @@ import { Like } from './like.entity';
 import { Post } from '../post/post.entity';
 import { NotificationService } from '../notification/notification.service';
 import { User } from '../user/user.entity';
-import { AppException } from '../../common/exceptions/app.exception';
-import { ErrorCode } from '../../common/exceptions/error-codes';
+import { AppException, ErrorCode } from '@/common/exceptions';
 
 @Injectable()
 export class LikeService {
@@ -23,7 +22,7 @@ export class LikeService {
   async toggle(userId: string, postId: string) {
     const post = await this.postRepo.findOne({ where: { id: postId } });
     if (!post) {
-      throw AppException.notFound(ErrorCode.POST_NOT_FOUND, 'Post not found');
+      throw AppException.notFound(ErrorCode.POST_NOT_FOUND);
     }
 
     const existing = await this.likeRepo.findOne({

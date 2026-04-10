@@ -6,6 +6,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ErrorCode } from '../exceptions/error-codes';
+import { getErrorMessageByCode } from '../exceptions/error-messages';
 
 function defaultErrorCode(status: number) {
   switch (status) {
@@ -45,10 +46,6 @@ export class HttpExceptionFilter implements ExceptionFilter {
         ? { message: errorResponse }
         : (errorResponse as Record<string, unknown>);
 
-    const message =
-      responseBody.message && Array.isArray(responseBody.message)
-        ? responseBody.message
-        : responseBody.message || 'Internal server error';
     const errorCode =
       typeof responseBody.errorCode === 'string'
         ? responseBody.errorCode
@@ -56,6 +53,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
             Array.isArray(responseBody.message)
           ? ErrorCode.VALIDATION_ERROR
           : defaultErrorCode(status);
+    const message =
+      responseBody.message && Array.isArray(responseBody.message)
+        ? responseBody.message
+        : typeof responseBody.message === 'string' &&
+            responseBody.message.trim().length > 0
+          ? responseBody.message
+          : getErrorMessageByCode(errorCode as ErrorCode) ||
+            '服务开小差了，请稍后再试';
     const details = responseBody.details;
 
     response.status(status).json({

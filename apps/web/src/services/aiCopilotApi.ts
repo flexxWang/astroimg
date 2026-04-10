@@ -3,8 +3,7 @@ import {
   parseApiErrorMessage,
   type ApiErrorPayload,
 } from "@/lib/apiResponse";
-import { apiFetch } from "@/services/api";
-import { API_BASE } from "@/services/api";
+import { apiFetch, API_BASE } from "@/services/api";
 import type {
   AiCopilotInput,
   AiPlanHistoryItem,
@@ -17,6 +16,10 @@ export function createAiPlan(payload: AiCopilotInput) {
   return apiFetch<AiCopilotPlan>("/ai/copilot/plan", {
     method: "POST",
     body: payload,
+    errorToast: {
+      title: "生成失败",
+      fallback: "生成失败，请稍后再试。",
+    },
   });
 }
 
@@ -29,6 +32,10 @@ export function fetchAiPlanHistory(page = 1, pageSize = 10) {
 export function deleteAiPlanHistory(id: string) {
   return apiFetch<{ id: string }>(`/ai/copilot/history/${id}`, {
     method: "DELETE",
+    errorToast: {
+      title: "删除失败",
+      fallback: "删除失败，请稍后再试。",
+    },
   });
 }
 

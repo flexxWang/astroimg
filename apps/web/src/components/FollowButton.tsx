@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { fetchFollowStatus, toggleFollow } from "@/services/followApi";
-import { showApiErrorToast } from "@/lib/showApiErrorToast";
 import { useUserStore } from "@/stores/userStore";
 
 export default function FollowButton({ userId }: { userId: string }) {
@@ -33,11 +32,7 @@ export default function FollowButton({ userId }: { userId: string }) {
     try {
       const result = await toggleFollow(userId);
       setFollowing(result.data.following);
-    } catch (err) {
-      showApiErrorToast(err, {
-        title: "关注失败",
-        fallback: "关注失败",
-      });
+    } catch {
     } finally {
       setLoading(false);
     }

@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { useUserStore } from "@/stores/userStore";
 import { fetchDraft, publishDraft, updateDraft } from "@/services/draftApi";
 import { useToast } from "@/hooks/useToast";
-import { showApiErrorToast } from "@/lib/showApiErrorToast";
 import { showErrorToast, showSuccessToast } from "@/lib/showToastMessage";
 
 export default function DraftEditPage() {
@@ -29,12 +28,7 @@ export default function DraftEditPage() {
         setTitle(result.data.title || "");
         setContent(result.data.content || "");
       })
-      .catch((err) => {
-        showApiErrorToast(err, {
-          title: "加载失败",
-          fallback: "加载失败，请稍后再试。",
-        });
-      });
+      .catch(() => {});
   }, [draftId, user]);
 
   const handleSave = async () => {
@@ -46,11 +40,7 @@ export default function DraftEditPage() {
     try {
       await updateDraft(draftId, { title, content });
       showSuccessToast("草稿已保存");
-    } catch (err) {
-      showApiErrorToast(err, {
-        title: "保存失败",
-        fallback: "保存失败，请稍后再试。",
-      });
+    } catch {
     } finally {
       setLoading(false);
     }
@@ -71,11 +61,7 @@ export default function DraftEditPage() {
     try {
       const result = await publishDraft(draftId);
       router.push(`/post/${result.data.id}`);
-    } catch (err) {
-      showApiErrorToast(err, {
-        title: "发布失败",
-        fallback: "发布失败，请稍后再试。",
-      });
+    } catch {
     } finally {
       setLoading(false);
     }

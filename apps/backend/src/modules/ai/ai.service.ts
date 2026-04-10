@@ -4,8 +4,7 @@ import { Repository } from 'typeorm';
 import { AiPlanSession } from './ai-plan-session.entity';
 import { CreateCopilotPlanDto } from './dto/create-copilot-plan.dto';
 import { ObservationPoint } from '../observation/observation.entity';
-import { AppException } from '../../common/exceptions/app.exception';
-import { ErrorCode } from '../../common/exceptions/error-codes';
+import { AppException, ErrorCode } from '@/common/exceptions';
 
 type Target = {
   name: string;
@@ -1203,10 +1202,7 @@ export class AiService {
     const result = await this.planRepo.delete({ id, userId });
 
     if (!result.affected) {
-      throw AppException.notFound(
-        ErrorCode.AI_PLAN_NOT_FOUND,
-        '计划不存在或已删除',
-      );
+      throw AppException.notFound(ErrorCode.AI_PLAN_NOT_FOUND);
     }
 
     return { id };

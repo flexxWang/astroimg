@@ -4,8 +4,7 @@ import { Repository } from 'typeorm';
 import { Follow } from './follow.entity';
 import { NotificationService } from '../notification/notification.service';
 import { User } from '../user/user.entity';
-import { AppException } from '../../common/exceptions/app.exception';
-import { ErrorCode } from '../../common/exceptions/error-codes';
+import { AppException, ErrorCode } from '@/common/exceptions';
 
 @Injectable()
 export class FollowService {
@@ -19,10 +18,7 @@ export class FollowService {
 
   async toggle(followerId: string, followingId: string) {
     if (followerId === followingId) {
-      throw AppException.badRequest(
-        ErrorCode.FOLLOW_SELF_FORBIDDEN,
-        'Cannot follow yourself',
-      );
+      throw AppException.badRequest(ErrorCode.FOLLOW_SELF_FORBIDDEN);
     }
 
     const existing = await this.followRepo.findOne({

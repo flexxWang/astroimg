@@ -6,7 +6,6 @@ import Link from "next/link";
 import { Space_Grotesk } from "next/font/google";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { showApiErrorToast } from "@/lib/showApiErrorToast";
 import { showErrorToast } from "@/lib/showToastMessage";
 import { fetchMe, login } from "@/services/userApi";
 import { useUserStore } from "@/stores/userStore";
@@ -39,11 +38,7 @@ export default function LoginPage() {
       const me = await fetchMe();
       setUser(me.data);
       router.push("/");
-    } catch (err) {
-      showApiErrorToast(err, {
-        title: "登录失败",
-        fallback: "登录失败，请稍后再试。",
-      });
+    } catch {
     } finally {
       setLoading(false);
     }

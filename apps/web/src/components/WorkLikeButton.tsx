@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { fetchWorkLikeStatus, toggleWorkLike } from "@/services/workLikeApi";
 import { useUserStore } from "@/stores/userStore";
-import { showApiErrorToast } from "@/lib/showApiErrorToast";
 import { showErrorToast } from "@/lib/showToastMessage";
 
 export default function WorkLikeButton({
@@ -34,12 +33,7 @@ export default function WorkLikeButton({
       const result = await toggleWorkLike(workId);
       setLiked(result.data.liked);
       setCount(result.data.likeCount);
-    } catch (err) {
-      showApiErrorToast(err, {
-        title: "操作失败",
-        fallback: "操作失败，请稍后再试。",
-      });
-    }
+    } catch {}
   };
 
   return (
