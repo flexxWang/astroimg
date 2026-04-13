@@ -1,14 +1,22 @@
-import { Module } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { CacheModule } from '@nestjs/cache-manager';
 import { WinstonModule } from 'nest-winston';
 import { transports, format } from 'winston';
 import { redisStore } from 'cache-manager-redis-yet';
+import { APP_GUARD } from '@nestjs/core';
 import databaseConfig from './config/database.config';
 import redisConfig from './config/redis.config';
 import jwtConfig from './config/jwt.config';
+import appConfig from './config/app.config';
 import { AppController } from './app.controller';
+import { AppService } from './app.service';
 import { validateEnv } from './config/env.validation';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
@@ -25,13 +33,18 @@ import { WorkCommentModule } from './modules/work-comment/work-comment.module';
 import { WorkLikeModule } from './modules/work-like/work-like.module';
 import { ObservationModule } from './modules/observation/observation.module';
 import { AiModule } from './modules/ai/ai.module';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { RequestContextMiddleware } from './common/middleware/request-context.middleware';
+import { ThrottleGuard } from './common/guards/throttle.guard';
+import { getBackendEnvFilePaths } from './config/env-files';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ['.env', '.env.local'],
-      load: [databaseConfig, redisConfig, jwtConfig],
+      envFilePath: getBackendEnvFilePaths(),
+      load: [appConfig, databaseConfig, redisConfig, jwtConfig],
       validate: validateEnv,
     }),
     WinstonModule.forRoot({
@@ -83,5 +96,20 @@ import { AiModule } from './modules/ai/ai.module';
     AiModule,
   ],
   controllers: [AppController],
+  providers: [
+    AppService,
+    HttpExceptionFilter,
+    ResponseInterceptor,
+    {
+      provide: APP_GUARD,
+      useClass: ThrottleGuard,
+    },
+  ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(RequestContextMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+  }
+}

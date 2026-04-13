@@ -6,6 +6,7 @@ const ERROR_MESSAGE_MAP: Partial<Record<ErrorCode, string>> = {
   [ErrorCode.FORBIDDEN]: '你没有权限执行这个操作',
   [ErrorCode.NOT_FOUND]: '请求的内容不存在或已被删除',
   [ErrorCode.CONFLICT]: '当前操作发生冲突，请稍后再试',
+  [ErrorCode.TOO_MANY_REQUESTS]: '请求太频繁了，请稍后再试',
   [ErrorCode.INTERNAL_SERVER_ERROR]: '服务开小差了，请稍后再试',
   [ErrorCode.VALIDATION_ERROR]: '提交的数据校验未通过，请检查后重试',
   [ErrorCode.USERNAME_ALREADY_EXISTS]: '这个用户名已经被使用了',

@@ -49,6 +49,7 @@ export default function PostFeed({
       }
       return fetchPostsPage(pageParam, pageSize, keyword).then((res) => res.data);
     },
+    initialPageParam: 1,
     initialData: {
       pages: [seedPage],
       pageParams: [1],

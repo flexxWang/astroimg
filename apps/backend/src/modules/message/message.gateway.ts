@@ -7,6 +7,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { PresenceService } from './presence.service';
 
 @WebSocketGateway({
   cors: {
@@ -18,14 +19,13 @@ export class MessageGateway implements OnGatewayConnection, OnGatewayDisconnect 
   @WebSocketServer()
   server: Server;
 
-  private readonly online = new Map<string, Set<string>>();
-
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly presenceService: PresenceService,
   ) {}
 
-  handleConnection(client: Socket) {
+  async handleConnection(client: Socket) {
     try {
       const cookie = client.handshake.headers.cookie || '';
       const token = this.extractToken(cookie);
@@ -38,27 +38,24 @@ export class MessageGateway implements OnGatewayConnection, OnGatewayDisconnect 
       });
       const userId = payload.sub as string;
       client.data.userId = userId;
-      if (!this.online.has(userId)) {
-        this.online.set(userId, new Set());
+      client.join(this.presenceService.roomForUser(userId));
+      const state = await this.presenceService.addConnection(userId, client.id);
+      if (state.changed) {
+        this.server.emit('presence:update', {
+          userId,
+          online: true,
+        });
       }
-      this.online.get(userId)!.add(client.id);
-      this.server.emit('presence:update', {
-        userId,
-        online: true,
-      });
     } catch {
       client.disconnect();
     }
   }
 
-  handleDisconnect(client: Socket) {
+  async handleDisconnect(client: Socket) {
     const userId = client.data.userId as string | undefined;
     if (!userId) return;
-    const set = this.online.get(userId);
-    if (!set) return;
-    set.delete(client.id);
-    if (set.size === 0) {
-      this.online.delete(userId);
+    const state = await this.presenceService.removeConnection(userId, client.id);
+    if (state.changed) {
       this.server.emit('presence:update', {
         userId,
         online: false,
@@ -67,15 +64,7 @@ export class MessageGateway implements OnGatewayConnection, OnGatewayDisconnect 
   }
 
   emitToUser(userId: string, event: string, payload: any) {
-    const sockets = this.online.get(userId);
-    if (!sockets) return;
-    sockets.forEach((id) => {
-      this.server.to(id).emit(event, payload);
-    });
-  }
-
-  isOnline(userId: string) {
-    return this.online.has(userId);
+    this.server.to(this.presenceService.roomForUser(userId)).emit(event, payload);
   }
 
   private extractToken(cookie: string) {

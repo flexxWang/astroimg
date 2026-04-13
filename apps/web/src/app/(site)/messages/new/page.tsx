@@ -1,13 +1,21 @@
 "use client";
 
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
 import { useUserStore } from "@/stores/userStore";
 import { sendMessage } from "@/services/messageApi";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 
 export default function NewMessagePage() {
+  return (
+    <Suspense fallback={null}>
+      <NewMessageContent />
+    </Suspense>
+  );
+}
+
+function NewMessageContent() {
   const router = useRouter();
   const params = useSearchParams();
   const recipientId = params.get("to") || "";

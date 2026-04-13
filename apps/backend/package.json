@@ -6,7 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "nest build && tsc-alias -p tsconfig.build.json",
+    "build": "pnpm --filter @astroimg/shared build && nest build && tsc-alias -p tsconfig.build.json",
     "typeorm": "node --require ts-node/register --require tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/data-source.ts",
     "migration:generate": "pnpm run typeorm migration:generate src/migrations/$(date +%s)-auto",
     "migration:create": "pnpm run typeorm migration:create src/migrations/manual",
@@ -24,7 +24,7 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "pnpm --filter @astroimg/shared build && jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
     "@astroimg/shared": "workspace:*",
@@ -38,6 +38,7 @@
     "@nestjs/platform-socket.io": "^11.1.16",
     "@nestjs/typeorm": "^11.0.0",
     "@nestjs/websockets": "^11.1.16",
+    "@socket.io/redis-adapter": "^8.3.0",
     "bcrypt": "^6.0.0",
     "cache-manager": "^7.2.8",
     "cache-manager-redis-yet": "^5.1.5",
@@ -49,6 +50,7 @@
     "nest-winston": "^1.10.2",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
+    "redis": "^5.11.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.3",
@@ -78,10 +80,10 @@
     "prettier": "^3.4.2",
     "source-map-support": "^0.5.21",
     "supertest": "^7.0.0",
-    "tsc-alias": "^1.8.16",
     "ts-jest": "^29.2.5",
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.16",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.20.0"
@@ -94,6 +96,10 @@
     ],
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/$1",
+      "^@astroimg/shared/error-codes$": "<rootDir>/../test/mocks/shared-error-codes.ts"
+    },
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
     },

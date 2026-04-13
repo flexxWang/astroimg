@@ -65,8 +65,15 @@ function readBoolean(
 
 export function validateEnv(env: Record<string, unknown>) {
   const validated = {
+    NODE_ENV: readString(env, 'NODE_ENV', 'development').toLowerCase(),
     PORT: readNumber(env, 'PORT', 4000, { min: 1, max: 65535 }),
     LOG_LEVEL: readString(env, 'LOG_LEVEL', 'info'),
+    TRUST_PROXY: readBoolean(env, 'TRUST_PROXY', false),
+    CORS_ALLOWED_ORIGINS: readString(env, 'CORS_ALLOWED_ORIGINS', ''),
+    COOKIE_DOMAIN:
+      typeof env.COOKIE_DOMAIN === 'string' ? env.COOKIE_DOMAIN.trim() : '',
+    COOKIE_SECURE: readBoolean(env, 'COOKIE_SECURE', false),
+    COOKIE_SAME_SITE: readString(env, 'COOKIE_SAME_SITE', 'lax').toLowerCase(),
     DB_HOST: readString(env, 'DB_HOST', '127.0.0.1'),
     DB_PORT: readNumber(env, 'DB_PORT', 3306, { min: 1, max: 65535 }),
     DB_USER: readString(env, 'DB_USER', 'root'),
@@ -100,6 +107,28 @@ export function validateEnv(env: Record<string, unknown>) {
 
   if (!['openai', 'openrouter'].includes(validated.AI_PROVIDER)) {
     throw new Error('AI_PROVIDER must be either openai or openrouter');
+  }
+
+  if (!['development', 'test', 'production'].includes(validated.NODE_ENV)) {
+    throw new Error('NODE_ENV must be one of development, test, production');
+  }
+
+  if (!['lax', 'strict', 'none'].includes(validated.COOKIE_SAME_SITE)) {
+    throw new Error('COOKIE_SAME_SITE must be one of lax, strict, none');
+  }
+
+  if (
+    validated.NODE_ENV === 'production' &&
+    validated.CORS_ALLOWED_ORIGINS.trim().length === 0
+  ) {
+    throw new Error('CORS_ALLOWED_ORIGINS is required in production');
+  }
+
+  if (
+    validated.NODE_ENV === 'production' &&
+    validated.JWT_SECRET === 'change-me-in-prod'
+  ) {
+    throw new Error('JWT_SECRET must be changed in production');
   }
 
   return {

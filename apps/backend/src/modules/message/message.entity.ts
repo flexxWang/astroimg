@@ -2,9 +2,16 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
+@Index('IDX_messages_conversation_created_at', ['conversationId', 'createdAt'])
+@Index('IDX_messages_recipient_read_conversation', [
+  'recipientId',
+  'read',
+  'conversationId',
+])
 @Entity('messages')
 export class Message {
   @PrimaryGeneratedColumn('uuid')

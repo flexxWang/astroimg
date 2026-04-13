@@ -39,6 +39,7 @@ export default function WorkFeed({
         }
         return fetchWorksPage(pageParam, pageSize).then((res) => res.data);
       },
+      initialPageParam: 1,
       initialData: {
         pages: [seedPage],
         pageParams: [1],

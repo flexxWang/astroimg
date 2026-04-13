@@ -1,10 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import {
+  DataSource,
+  EntityManager,
+  In,
+  QueryFailedError,
+  Repository,
+} from 'typeorm';
 import { Conversation } from './conversation.entity';
 import { Message } from './message.entity';
 import { User } from '../user/user.entity';
 import { MessageGateway } from './message.gateway';
+import { PresenceService } from './presence.service';
 import { AppException, ErrorCode } from '@/common/exceptions';
 
 @Injectable()
@@ -17,6 +24,8 @@ export class MessageService {
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly gateway: MessageGateway,
+    private readonly presenceService: PresenceService,
+    private readonly dataSource: DataSource,
   ) {}
 
   private ensureConversationAccess(
@@ -63,18 +72,20 @@ export class MessageService {
       });
     }
 
-    return conversations.map((c) => {
-      const otherId = c.userAId === userId ? c.userBId : c.userAId;
-      return {
-        id: c.id,
-        otherUserId: otherId,
-        otherUsername: userMap.get(otherId) || '用户',
-        lastMessage: c.lastMessage || '',
-        updatedAt: c.updatedAt,
-        unreadCount: unreadMap.get(c.id) || 0,
-        online: this.gateway.isOnline(otherId),
-      };
-    });
+    return Promise.all(
+      conversations.map(async (c) => {
+        const otherId = c.userAId === userId ? c.userBId : c.userAId;
+        return {
+          id: c.id,
+          otherUserId: otherId,
+          otherUsername: userMap.get(otherId) || '用户',
+          lastMessage: c.lastMessage || '',
+          updatedAt: c.updatedAt,
+          unreadCount: unreadMap.get(c.id) || 0,
+          online: await this.presenceService.isOnline(otherId),
+        };
+      }),
+    );
   }
 
   async listMessages(userId: string, conversationId: string, cursor?: string) {
@@ -114,47 +125,91 @@ export class MessageService {
   }
 
   async sendMessage(senderId: string, recipientId: string, content: string) {
-    const [userA, userB] = [senderId, recipientId].sort();
-    let conversation = await this.conversationRepo.findOne({
-      where: { userAId: userA, userBId: userB },
-    });
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const [userA, userB] = [senderId, recipientId].sort();
+      const conversation = await this.findOrCreateConversation(
+        manager,
+        userA,
+        userB,
+        content,
+      );
 
-    if (!conversation) {
-      conversation = this.conversationRepo.create({
-        userAId: userA,
-        userBId: userB,
-        lastMessage: content,
+      const message = manager.create(Message, {
+        conversationId: conversation.id,
+        senderId,
+        recipientId,
+        content,
       });
-      conversation = await this.conversationRepo.save(conversation);
-    } else {
-      conversation.lastMessage = content;
-      conversation = await this.conversationRepo.save(conversation);
-    }
 
-    const message = this.messageRepo.create({
-      conversationId: conversation.id,
-      senderId,
-      recipientId,
-      content,
+      return manager.save(Message, message);
     });
 
-    const saved = await this.messageRepo.save(message);
     this.gateway.emitToUser(recipientId, 'message:new', saved);
     this.gateway.emitToUser(senderId, 'message:new', saved);
     return saved;
   }
 
   async markRead(userId: string, conversationId: string) {
-    const conversation = await this.conversationRepo.findOne({
-      where: { id: conversationId },
-    });
-    this.ensureConversationAccess(conversation, userId);
+    await this.dataSource.transaction(async (manager) => {
+      const conversation = await manager.findOne(Conversation, {
+        where: { id: conversationId },
+      });
+      this.ensureConversationAccess(conversation, userId);
 
-    await this.messageRepo.update(
-      { conversationId, recipientId: userId, read: false },
-      { read: true },
-    );
+      await manager.update(
+        Message,
+        { conversationId, recipientId: userId, read: false },
+        { read: true },
+      );
+    });
+
     this.gateway.emitToUser(userId, 'conversation:read', { conversationId });
     return null;
+  }
+
+  private async findOrCreateConversation(
+    manager: EntityManager,
+    userA: string,
+    userB: string,
+    lastMessage: string,
+  ) {
+    const existing = await manager.findOne(Conversation, {
+      where: { userAId: userA, userBId: userB },
+    });
+
+    if (existing) {
+      existing.lastMessage = lastMessage;
+      return manager.save(Conversation, existing);
+    }
+
+    try {
+      const created = manager.create(Conversation, {
+        userAId: userA,
+        userBId: userB,
+        lastMessage,
+      });
+      return await manager.save(Conversation, created);
+    } catch (error) {
+      if (this.isDuplicateConversationError(error)) {
+        const duplicated = await manager.findOne(Conversation, {
+          where: { userAId: userA, userBId: userB },
+        });
+        if (duplicated) {
+          duplicated.lastMessage = lastMessage;
+          return manager.save(Conversation, duplicated);
+        }
+      }
+
+      throw error;
+    }
+  }
+
+  private isDuplicateConversationError(error: unknown) {
+    if (!(error instanceof QueryFailedError)) {
+      return false;
+    }
+
+    const driverError = error.driverError as { code?: string } | undefined;
+    return driverError?.code === 'ER_DUP_ENTRY';
   }
 }

@@ -12,6 +12,7 @@ import {
 import type { Response } from 'express';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { PageQueryDto } from '@/common/dto/page-query.dto';
+import { Throttle } from '@/common/decorators/throttle.decorator';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { AiService } from './ai.service';
 import { CreateCopilotPlanDto } from './dto/create-copilot-plan.dto';
@@ -21,6 +22,7 @@ import { CreateCopilotPlanDto } from './dto/create-copilot-plan.dto';
 export class AiController {
   constructor(private readonly aiService: AiService) {}
 
+  @Throttle({ limit: 20, ttl: 60 * 5, keyPrefix: 'ai-plan' })
   @HttpPost('plan')
   createPlan(
     @CurrentUser() user: { id: string },
@@ -29,6 +31,7 @@ export class AiController {
     return this.aiService.createPlan(user.id, dto);
   }
 
+  @Throttle({ limit: 10, ttl: 60 * 5, keyPrefix: 'ai-stream' })
   @HttpPost('plan/stream')
   async streamPlan(
     @CurrentUser() user: { id: string },

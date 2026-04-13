@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -18,6 +18,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { useInfiniteMessages } from "@/hooks/useInfiniteMessages";
 
 export default function MessagesPage() {
+  return (
+    <Suspense fallback={null}>
+      <MessagesPageContent />
+    </Suspense>
+  );
+}
+
+function MessagesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const user = useUserStore((state) => state.user);

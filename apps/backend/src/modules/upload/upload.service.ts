@@ -64,4 +64,12 @@ export class UploadService {
       throw AppException.internal(ErrorCode.UPLOAD_SIGN_FAILED);
     }
   }
+
+  async checkHealth() {
+    const bucketExists = await this.client.bucketExists(this.bucket);
+    return {
+      bucket: this.bucket,
+      bucketExists,
+    };
+  }
 }

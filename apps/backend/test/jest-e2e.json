@@ -3,6 +3,10 @@
   "rootDir": ".",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
+  "moduleNameMapper": {
+    "^@/(.*)$": "<rootDir>/../src/$1",
+    "^@astroimg/shared/error-codes$": "<rootDir>/mocks/shared-error-codes.ts"
+  },
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   }

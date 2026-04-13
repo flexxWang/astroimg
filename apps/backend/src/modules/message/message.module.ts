@@ -8,6 +8,7 @@ import { User } from '../user/user.entity';
 import { MessageGateway } from './message.gateway';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
+import { PresenceService } from './presence.service';
 
 @Module({
   imports: [
@@ -16,6 +17,6 @@ import { ConfigModule } from '@nestjs/config';
     ConfigModule,
   ],
   controllers: [MessageController],
-  providers: [MessageService, MessageGateway],
+  providers: [MessageService, MessageGateway, PresenceService],
 })
 export class MessageModule {}

@@ -73,4 +73,17 @@ export class AppException extends HttpException {
       details,
     );
   }
+
+  static tooManyRequests(
+    errorCode: ErrorCode,
+    message?: string | string[],
+    details?: unknown,
+  ) {
+    return new AppException(
+      HttpStatus.TOO_MANY_REQUESTS,
+      errorCode,
+      message,
+      details,
+    );
+  }
 }
