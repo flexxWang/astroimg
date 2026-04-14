@@ -9,19 +9,19 @@ import {
 import { Test, TestingModule } from '@nestjs/testing';
 import { of, firstValueFrom } from 'rxjs';
 import { DataSource } from 'typeorm';
-import { AppController } from '../src/app.controller';
-import { AppService } from '../src/app.service';
 import appConfig from '../src/config/app.config';
 import { ResponseInterceptor } from '../src/common/interceptors/response.interceptor';
 import { ThrottleGuard } from '../src/common/guards/throttle.guard';
 import { AuthController } from '../src/modules/auth/auth.controller';
 import { AuthService } from '../src/modules/auth/auth.service';
+import { HealthController } from '../src/modules/health/health.controller';
+import { HealthService } from '../src/modules/health/health.service';
 import { UploadService } from '../src/modules/upload/upload.service';
 
 describe('Backend infrastructure smoke tests', () => {
   let moduleFixture: TestingModule;
-  let appController: AppController;
-  let appService: AppService;
+  let healthController: HealthController;
+  let healthService: HealthService;
   let authController: AuthController;
   let throttleGuard: ThrottleGuard;
   let responseInterceptor: ResponseInterceptor;
@@ -51,9 +51,9 @@ describe('Backend infrastructure smoke tests', () => {
           load: [appConfig],
         }),
       ],
-      controllers: [AppController, AuthController],
+      controllers: [HealthController, AuthController],
       providers: [
-        AppService,
+        HealthService,
         ResponseInterceptor,
         ThrottleGuard,
         Reflector,
@@ -98,8 +98,8 @@ describe('Backend infrastructure smoke tests', () => {
       ],
     }).compile();
 
-    appController = moduleFixture.get(AppController);
-    appService = moduleFixture.get(AppService);
+    healthController = moduleFixture.get(HealthController);
+    healthService = moduleFixture.get(HealthService);
     authController = moduleFixture.get(AuthController);
     throttleGuard = moduleFixture.get(ThrottleGuard);
     responseInterceptor = moduleFixture.get(ResponseInterceptor);
@@ -111,7 +111,7 @@ describe('Backend infrastructure smoke tests', () => {
   });
 
   it('returns live health information', () => {
-    const result = appController.live();
+    const result = healthController.live();
 
     expect(result.status).toBe('ok');
     expect(result.uptimeSeconds).toBeGreaterThanOrEqual(0);
@@ -119,7 +119,7 @@ describe('Backend infrastructure smoke tests', () => {
   });
 
   it('returns ready status when dependencies are healthy', async () => {
-    const result = await appService.ready();
+    const result = await healthService.ready();
 
     expect(result.status).toBe('ok');
     expect(result.dependencies.database.status).toBe('up');
@@ -130,7 +130,7 @@ describe('Backend infrastructure smoke tests', () => {
   it('throws 503 from ready endpoint when dependency is down', async () => {
     uploadService.checkHealth.mockRejectedValueOnce(new Error('minio down'));
 
-    await expect(appController.ready()).rejects.toBeInstanceOf(
+    await expect(healthController.ready()).rejects.toBeInstanceOf(
       ServiceUnavailableException,
     );
   });
@@ -172,7 +172,7 @@ describe('Backend infrastructure smoke tests', () => {
             originalUrl: '/auth/login',
           }),
         }),
-      }) as ExecutionContext;
+      }) as unknown as ExecutionContext;
 
     for (let i = 0; i < 5; i += 1) {
       await expect(throttleGuard.canActivate(createContext())).resolves.toBe(
@@ -195,7 +195,7 @@ describe('Backend infrastructure smoke tests', () => {
         getResponse: () => ({ statusCode: 200 }),
         getRequest: () => ({ requestId: 'req-test-1' }),
       }),
-    } as ExecutionContext;
+    } as unknown as ExecutionContext;
     const next: CallHandler = {
       handle: () => of({ status: 'ok' }),
     };

@@ -55,6 +55,13 @@ Then start the backend locally:
 pnpm --filter @astroimg/backend start:dev
 ```
 
+Run the basic quality checks before pushing:
+
+```bash
+pnpm --filter @astroimg/backend typecheck
+pnpm --filter @astroimg/backend lint
+```
+
 If this is a fresh database, run migrations once:
 
 ```bash
@@ -124,6 +131,9 @@ After that, normal startup or `migration:run` will only apply future migrations.
 ### Useful commands
 
 ```bash
+pnpm run typecheck
+pnpm run lint
+pnpm run lint:fix
 pnpm run migration:show
 pnpm run migration:run
 pnpm run migration:revert

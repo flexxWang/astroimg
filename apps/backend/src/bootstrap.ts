@@ -1,6 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { INestApplication } from '@nestjs/common';
+import type { Express } from 'express';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -27,7 +28,8 @@ export function configureApp(app: INestApplication) {
   app.enableShutdownHooks();
 
   if (trustProxy) {
-    app.getHttpAdapter().getInstance().set('trust proxy', 1);
+    const httpAdapter = app.getHttpAdapter().getInstance() as Express;
+    httpAdapter.set('trust proxy', 1);
   }
 
   app.useGlobalPipes(

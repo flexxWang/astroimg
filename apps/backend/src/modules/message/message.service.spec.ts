@@ -91,7 +91,9 @@ describe('MessageService', () => {
       const duplicateError = new QueryFailedError(
         'INSERT INTO conversations ...',
         [],
-        { code: 'ER_DUP_ENTRY' },
+        Object.assign(new Error('duplicate conversation'), {
+          code: 'ER_DUP_ENTRY',
+        }),
       );
 
       const manager = {

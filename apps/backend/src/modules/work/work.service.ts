@@ -7,6 +7,27 @@ import { WorkDevice } from './work-device.entity';
 import { CreateWorkDto } from './dto/create-work.dto';
 import { AppException, ErrorCode } from '@/common/exceptions';
 
+type WorkListRow = {
+  work_id: string;
+  work_title: string;
+  work_description: string | null;
+  work_imageUrl: string | null;
+  work_imageUrls: string[] | string | null;
+  work_image_urls: string[] | string | null;
+  work_videoUrl: string | null;
+  work_authorId: string;
+  work_createdAt: Date;
+  work_likeCount: number;
+  work_commentCount: number;
+  type_id: string | null;
+  type_name: string | null;
+  device_id: string | null;
+  device_name: string | null;
+  author_id: string | null;
+  author_username: string | null;
+  author_avatarUrl: string | null;
+};
+
 const DEFAULT_TYPES = [
   { code: 'nebula', name: '星云' },
   { code: 'galaxy', name: '星系' },
@@ -78,23 +99,30 @@ export class WorkService implements OnModuleInit {
       .addSelect('author.avatarUrl', 'author_avatarUrl');
   }
 
-  private mapWork(row: any) {
+  private mapWork(row: WorkListRow) {
     let parsedImages: string[] = [];
+    const assignParsedImages = (value: unknown) => {
+      if (
+        Array.isArray(value) &&
+        value.every((item): item is string => typeof item === 'string')
+      ) {
+        parsedImages = value;
+      }
+    };
+
     if (row.work_image_urls && Array.isArray(row.work_image_urls)) {
       parsedImages = row.work_image_urls;
     } else if (row.work_imageUrls && Array.isArray(row.work_imageUrls)) {
       parsedImages = row.work_imageUrls;
     } else if (typeof row.work_imageUrls === 'string') {
       try {
-        const value = JSON.parse(row.work_imageUrls);
-        if (Array.isArray(value)) parsedImages = value;
+        assignParsedImages(JSON.parse(row.work_imageUrls));
       } catch {
         parsedImages = [];
       }
     } else if (typeof row.work_image_urls === 'string') {
       try {
-        const value = JSON.parse(row.work_image_urls);
-        if (Array.isArray(value)) parsedImages = value;
+        assignParsedImages(JSON.parse(row.work_image_urls));
       } catch {
         parsedImages = [];
       }
@@ -136,7 +164,7 @@ export class WorkService implements OnModuleInit {
         .orderBy('work.createdAt', 'DESC')
         .offset((page - 1) * pageSize)
         .limit(pageSize)
-        .getRawMany(),
+        .getRawMany<WorkListRow>(),
       this.workRepo.count(),
     ]);
     const items = rows.map((row) => this.mapWork(row));
@@ -156,7 +184,7 @@ export class WorkService implements OnModuleInit {
         .orderBy('work.createdAt', 'DESC')
         .offset((page - 1) * pageSize)
         .limit(pageSize)
-        .getRawMany(),
+        .getRawMany<WorkListRow>(),
       this.workRepo.count({ where: { authorId } }),
     ]);
     const items = rows.map((row) => this.mapWork(row));
@@ -220,8 +248,30 @@ export class WorkService implements OnModuleInit {
   async findById(id: string) {
     const row = await this.baseQuery()
       .where('work.id = :id', { id })
-      .getRawOne();
+      .getRawOne<WorkListRow>();
     return row ? this.mapWork(row) : null;
+  }
+
+  async incrementCommentCount(workId: string) {
+    await this.workRepo.increment({ id: workId }, 'commentCount', 1);
+  }
+
+  async incrementLikeCount(workId: string) {
+    await this.workRepo.increment({ id: workId }, 'likeCount', 1);
+    const updated = await this.workRepo.findOne({
+      where: { id: workId },
+      select: ['id', 'likeCount'],
+    });
+    return updated?.likeCount ?? 0;
+  }
+
+  async decrementLikeCount(workId: string) {
+    await this.workRepo.decrement({ id: workId }, 'likeCount', 1);
+    const updated = await this.workRepo.findOne({
+      where: { id: workId },
+      select: ['id', 'likeCount'],
+    });
+    return updated?.likeCount ?? 0;
   }
 
   listTypes() {

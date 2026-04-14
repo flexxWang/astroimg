@@ -1,16 +1,15 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WorkLike } from './work-like.entity';
-import { Work } from '../work/work.entity';
+import { WorkService } from '../work/work.service';
 
 @Injectable()
 export class WorkLikeService {
   constructor(
     @InjectRepository(WorkLike)
     private readonly likeRepo: Repository<WorkLike>,
-    @InjectRepository(Work)
-    private readonly workRepo: Repository<Work>,
+    private readonly workService: WorkService,
   ) {}
 
   async toggle(workId: string, userId: string) {
@@ -20,15 +19,13 @@ export class WorkLikeService {
 
     if (existing) {
       await this.likeRepo.delete({ id: existing.id });
-      await this.workRepo.decrement({ id: workId }, 'likeCount', 1);
-      const updated = await this.workRepo.findOne({ where: { id: workId } });
-      return { liked: false, likeCount: updated?.likeCount ?? 0 };
+      const likeCount = await this.workService.decrementLikeCount(workId);
+      return { liked: false, likeCount };
     }
 
     await this.likeRepo.save({ workId, userId });
-    await this.workRepo.increment({ id: workId }, 'likeCount', 1);
-    const updated = await this.workRepo.findOne({ where: { id: workId } });
-    return { liked: true, likeCount: updated?.likeCount ?? 0 };
+    const likeCount = await this.workService.incrementLikeCount(workId);
+    return { liked: true, likeCount };
   }
 
   async isLiked(workId: string, userId: string) {

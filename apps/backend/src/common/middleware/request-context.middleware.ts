@@ -1,13 +1,9 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import type { NextFunction, Request, Response } from 'express';
+import type { NextFunction, Response } from 'express';
 import { AppLogger } from '@/common/logging/app-logger.service';
 import { RequestContextService } from '@/common/context/request-context.service';
-
-type RequestWithContext = Request & {
-  requestId?: string;
-  traceId?: string;
-};
+import type { RequestWithContext } from '@/common/http/request.types';
 
 @Injectable()
 export class RequestContextMiddleware implements NestMiddleware {

@@ -7,6 +7,8 @@ describe('PresenceService', () => {
     service = new PresenceService({
       getOrThrow: jest.fn(),
       get: jest.fn(),
+    } as any, {
+      error: jest.fn(),
     } as any);
   });
 

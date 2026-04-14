@@ -2,31 +2,22 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './user.entity';
-import { Follow } from '../follow/follow.entity';
-import { Post } from '../post/post.entity';
+import { FollowService } from '../follow/follow.service';
+import { PostService } from '../post/post.service';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
-    @InjectRepository(Follow)
-    private readonly followRepo: Repository<Follow>,
-    @InjectRepository(Post)
-    private readonly postRepo: Repository<Post>,
+    private readonly followService: FollowService,
+    private readonly postService: PostService,
   ) {}
 
   async findByIdPublic(id: string) {
     return this.userRepo.findOne({
       where: { id },
-      select: [
-        'id',
-        'username',
-        'email',
-        'avatarUrl',
-        'bio',
-        'createdAt',
-      ],
+      select: ['id', 'username', 'email', 'avatarUrl', 'bio', 'createdAt'],
     });
   }
 
@@ -34,19 +25,13 @@ export class UserService {
     const user = await this.findByIdPublic(id);
     if (!user) return null;
 
-    const [postsCount, followersCount, followingCount, likesRow] =
+    const [postsCount, followersCount, followingCount, likesCount] =
       await Promise.all([
-        this.postRepo.count({ where: { authorId: id } }),
-        this.followRepo.count({ where: { followingId: id } }),
-        this.followRepo.count({ where: { followerId: id } }),
-        this.postRepo
-          .createQueryBuilder('post')
-          .select('COALESCE(SUM(post.likeCount), 0)', 'total')
-          .where('post.authorId = :id', { id })
-          .getRawOne(),
+        this.postService.countByAuthor(id),
+        this.followService.countFollowers(id),
+        this.followService.countFollowing(id),
+        this.postService.sumLikesByAuthor(id),
       ]);
-
-    const likesCount = Number(likesRow?.total ?? 0);
 
     return {
       ...user,

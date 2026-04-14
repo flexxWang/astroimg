@@ -3,7 +3,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { ConfigService } from '@nestjs/config';
 import type { Cache } from 'cache-manager';
 import { DataSource } from 'typeorm';
-import { UploadService } from './modules/upload/upload.service';
+import { UploadService } from '../upload/upload.service';
 
 type DependencyStatus = {
   status: 'up' | 'down';
@@ -13,7 +13,7 @@ type DependencyStatus = {
 };
 
 @Injectable()
-export class AppService {
+export class HealthService {
   constructor(
     private readonly dataSource: DataSource,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,

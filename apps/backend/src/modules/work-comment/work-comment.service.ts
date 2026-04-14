@@ -2,16 +2,25 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WorkComment } from './work-comment.entity';
-import { Work } from '../work/work.entity';
 import { CreateWorkCommentDto } from './dto/create-work-comment.dto';
+import { WorkService } from '../work/work.service';
+
+type WorkCommentRow = {
+  comment_id: string;
+  comment_content: string;
+  comment_createdAt: Date;
+  comment_authorId: string;
+  author_id: string | null;
+  author_username: string | null;
+  author_avatarUrl: string | null;
+};
 
 @Injectable()
 export class WorkCommentService {
   constructor(
     @InjectRepository(WorkComment)
     private readonly commentRepo: Repository<WorkComment>,
-    @InjectRepository(Work)
-    private readonly workRepo: Repository<Work>,
+    private readonly workService: WorkService,
   ) {}
 
   async listByWork(workId: string) {
@@ -27,7 +36,7 @@ export class WorkCommentService {
       .addSelect('author.avatarUrl', 'author_avatarUrl')
       .where('comment.workId = :workId', { workId })
       .orderBy('comment.createdAt', 'DESC')
-      .getRawMany()
+      .getRawMany<WorkCommentRow>()
       .then((rows) =>
         rows.map((row) => ({
           id: row.comment_id,
@@ -52,7 +61,7 @@ export class WorkCommentService {
       authorId,
     });
     const saved = await this.commentRepo.save(comment);
-    await this.workRepo.increment({ id: workId }, 'commentCount', 1);
+    await this.workService.incrementCommentCount(workId);
     return saved;
   }
 }

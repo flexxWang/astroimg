@@ -3,10 +3,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { WorkComment } from './work-comment.entity';
 import { WorkCommentService } from './work-comment.service';
 import { WorkCommentController } from './work-comment.controller';
-import { Work } from '../work/work.entity';
+import { WorkModule } from '../work/work.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([WorkComment, Work])],
+  imports: [TypeOrmModule.forFeature([WorkComment]), WorkModule],
   providers: [WorkCommentService],
   controllers: [WorkCommentController],
 })

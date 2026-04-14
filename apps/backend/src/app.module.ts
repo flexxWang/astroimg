@@ -13,8 +13,6 @@ import databaseConfig from './config/database.config';
 import redisConfig from './config/redis.config';
 import jwtConfig from './config/jwt.config';
 import appConfig from './config/app.config';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { validateEnv } from './config/env.validation';
 import { AuthModule } from './modules/auth/auth.module';
 import { UserModule } from './modules/user/user.module';
@@ -37,6 +35,7 @@ import { RequestContextMiddleware } from './common/middleware/request-context.mi
 import { ThrottleGuard } from './common/guards/throttle.guard';
 import { getBackendEnvFilePaths } from './config/env-files';
 import { ObservabilityModule } from './common/observability/observability.module';
+import { HealthModule } from './modules/health/health.module';
 
 @Module({
   imports: [
@@ -62,7 +61,7 @@ import { ObservabilityModule } from './common/observability/observability.module
           password?: string;
           db: number;
         }>('redis');
-        const options: any = {
+        const options: Parameters<typeof redisStore>[0] = {
           socket: { host: redis.host, port: redis.port },
           database: redis.db,
         };
@@ -89,10 +88,9 @@ import { ObservabilityModule } from './common/observability/observability.module
     WorkLikeModule,
     ObservationModule,
     AiModule,
+    HealthModule,
   ],
-  controllers: [AppController],
   providers: [
-    AppService,
     HttpExceptionFilter,
     ResponseInterceptor,
     {

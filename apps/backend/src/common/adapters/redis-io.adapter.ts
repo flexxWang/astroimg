@@ -4,7 +4,7 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 import { ConfigService } from '@nestjs/config';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { createClient, type RedisClientType } from 'redis';
-import type { ServerOptions } from 'socket.io';
+import type { Server, ServerOptions } from 'socket.io';
 
 export class RedisIoAdapter extends IoAdapter {
   private readonly logger = new Logger(RedisIoAdapter.name);
@@ -40,7 +40,7 @@ export class RedisIoAdapter extends IoAdapter {
   }
 
   createIOServer(port: number, options?: ServerOptions) {
-    const server = super.createIOServer(port, options);
+    const server = super.createIOServer(port, options) as Server;
     if (this.adapterConstructor) {
       server.adapter(this.adapterConstructor);
     }
@@ -48,9 +48,6 @@ export class RedisIoAdapter extends IoAdapter {
   }
 
   async close() {
-    await Promise.all([
-      this.pubClient?.quit(),
-      this.subClient?.quit(),
-    ]);
+    await Promise.all([this.pubClient?.quit(), this.subClient?.quit()]);
   }
 }

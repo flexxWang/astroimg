@@ -10,5 +10,6 @@ import { FollowService } from './follow.service';
   imports: [TypeOrmModule.forFeature([Follow, User]), NotificationModule],
   controllers: [FollowController],
   providers: [FollowService],
+  exports: [FollowService],
 })
 export class FollowModule {}

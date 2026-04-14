@@ -48,4 +48,12 @@ export class FollowService {
     });
     return { following: Boolean(existing) };
   }
+
+  countFollowers(userId: string) {
+    return this.followRepo.count({ where: { followingId: userId } });
+  }
+
+  countFollowing(userId: string) {
+    return this.followRepo.count({ where: { followerId: userId } });
+  }
 }

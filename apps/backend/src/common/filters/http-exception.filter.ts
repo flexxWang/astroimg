@@ -5,12 +5,17 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { AppLogger } from '@/common/logging/app-logger.service';
 import { Sentry, isBackendSentryEnabled } from '@/common/monitoring/sentry';
+import type {
+  RequestWithContext,
+  ResponseBodyShape,
+} from '@/common/http/request.types';
 import { ErrorCode } from '../exceptions/error-codes';
 import { getErrorMessageByCode } from '../exceptions/error-messages';
 
-function defaultErrorCode(status: number) {
+function defaultErrorCode(status: HttpStatus): ErrorCode {
   switch (status) {
     case HttpStatus.BAD_REQUEST:
       return ErrorCode.BAD_REQUEST;
@@ -35,26 +40,26 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
-    const response = ctx.getResponse();
-    const request = ctx.getRequest();
+    const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<RequestWithContext>();
 
     const isHttpException = exception instanceof HttpException;
-    const status = isHttpException
+    const status: HttpStatus = isHttpException
       ? exception.getStatus()
       : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const errorResponse = isHttpException
+    const errorResponse: string | ResponseBodyShape = isHttpException
       ? exception.getResponse()
       : { message: 'Internal server error' };
 
-    const responseBody =
+    const responseBody: ResponseBodyShape =
       typeof errorResponse === 'string'
         ? { message: errorResponse }
-        : (errorResponse as Record<string, unknown>);
+        : errorResponse;
 
-    const errorCode =
+    const errorCode: ErrorCode =
       typeof responseBody.errorCode === 'string'
-        ? responseBody.errorCode
+        ? (responseBody.errorCode as ErrorCode)
         : status === HttpStatus.BAD_REQUEST &&
             Array.isArray(responseBody.message)
           ? ErrorCode.VALIDATION_ERROR
@@ -65,8 +70,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
         : typeof responseBody.message === 'string' &&
             responseBody.message.trim().length > 0
           ? responseBody.message
-          : getErrorMessageByCode(errorCode as ErrorCode) ||
-            '服务开小差了，请稍后再试';
+          : getErrorMessageByCode(errorCode) || '服务开小差了，请稍后再试';
     const details = responseBody.details;
     const requestId =
       typeof request.requestId === 'string' ? request.requestId : undefined;

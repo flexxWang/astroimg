@@ -3,19 +3,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Comment } from './comment.entity';
 import { CreateCommentDto } from './dto/create-comment.dto';
-import { Post } from '../post/post.entity';
 import { NotificationService } from '../notification/notification.service';
-import { User } from '../user/user.entity';
+import { PostService } from '../post/post.service';
+import { UserService } from '../user/user.service';
 
 @Injectable()
 export class CommentService {
   constructor(
     @InjectRepository(Comment)
     private readonly commentRepo: Repository<Comment>,
-    @InjectRepository(Post)
-    private readonly postRepo: Repository<Post>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
+    private readonly postService: PostService,
+    private readonly userService: UserService,
     private readonly notificationService: NotificationService,
   ) {}
 
@@ -26,11 +24,10 @@ export class CommentService {
       postId,
     });
     return this.commentRepo.save(comment).then(async (saved) => {
-      const post = await this.postRepo.findOne({ where: { id: postId } });
+      const post = await this.postService.findEntityById(postId);
       if (post) {
-        post.commentCount = (post.commentCount || 0) + 1;
-        await this.postRepo.save(post);
-        const actor = await this.userRepo.findOne({ where: { id: authorId } });
+        await this.postService.incrementCommentCount(postId);
+        const actor = await this.userService.findByIdPublic(authorId);
         await this.notificationService.create({
           userId: post.authorId,
           actorId: authorId,
@@ -46,7 +43,7 @@ export class CommentService {
   findByPost(postId: string) {
     return this.commentRepo.find({
       where: { postId },
-      order: { createdAt: "DESC" },
+      order: { createdAt: 'DESC' },
     });
   }
 }

@@ -2,9 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Like } from './like.entity';
-import { Post } from '../post/post.entity';
 import { NotificationService } from '../notification/notification.service';
-import { User } from '../user/user.entity';
+import { PostService } from '../post/post.service';
+import { UserService } from '../user/user.service';
 import { AppException, ErrorCode } from '@/common/exceptions';
 
 @Injectable()
@@ -12,15 +12,13 @@ export class LikeService {
   constructor(
     @InjectRepository(Like)
     private readonly likeRepo: Repository<Like>,
-    @InjectRepository(Post)
-    private readonly postRepo: Repository<Post>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
+    private readonly postService: PostService,
+    private readonly userService: UserService,
     private readonly notificationService: NotificationService,
   ) {}
 
   async toggle(userId: string, postId: string) {
-    const post = await this.postRepo.findOne({ where: { id: postId } });
+    const post = await this.postService.findEntityById(postId);
     if (!post) {
       throw AppException.notFound(ErrorCode.POST_NOT_FOUND);
     }
@@ -31,24 +29,22 @@ export class LikeService {
 
     if (existing) {
       await this.likeRepo.remove(existing);
-      post.likeCount = Math.max(0, (post.likeCount || 0) - 1);
-      await this.postRepo.save(post);
-      return { liked: false, likeCount: post.likeCount };
+      const updated = await this.postService.decrementLikeCount(postId);
+      return { liked: false, likeCount: updated.likeCount };
     }
 
     const like = this.likeRepo.create({ userId, postId });
     await this.likeRepo.save(like);
-    post.likeCount = (post.likeCount || 0) + 1;
-    await this.postRepo.save(post);
-    const actor = await this.userRepo.findOne({ where: { id: userId } });
+    const updated = await this.postService.incrementLikeCount(postId);
+    const actor = await this.userService.findByIdPublic(userId);
     await this.notificationService.create({
-      userId: post.authorId,
+      userId: updated.authorId,
       actorId: userId,
       actorName: actor?.username || '用户',
       type: 'like',
       postId,
     });
-    return { liked: true, likeCount: post.likeCount };
+    return { liked: true, likeCount: updated.likeCount };
   }
 
   async status(userId: string, postId: string) {
