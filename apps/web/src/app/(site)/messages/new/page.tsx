@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useUserStore } from "@/stores/userStore";
-import { sendMessage } from "@/services/messageApi";
+import { sendMessage } from "@/features/messages/services/messageApi";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 

@@ -1,6 +1,6 @@
-import FollowButton from "@/components/FollowButton";
-import ProfileTabs from "@/components/ProfileTabs";
-import UserAvatar from "@/components/UserAvatar";
+import FollowButton from "@/features/follows/components/FollowButton";
+import ProfileTabs from "@/features/users/components/ProfileTabs";
+import UserAvatar from "@/shared/components/UserAvatar";
 import { serverFetch } from "@/lib/serverApi";
 import type {
   Paginated,

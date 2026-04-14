@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import UserMenu from "@/components/UserMenu";
-import NotificationBell from "@/components/NotificationBell";
+import NotificationBell from "@/features/notifications/components/NotificationBell";
+import UserMenu from "@/features/users/components/UserMenu";
 
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -21,18 +20,18 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
               </button>
               <div className="pointer-events-none absolute left-1/2 top-full z-10 w-40 -translate-x-1/2 pt-3 opacity-0 transition group-hover:opacity-100 group-hover:pointer-events-auto">
                 <div className="rounded-xl border bg-white/95 p-2 shadow-lg">
-                <Link
-                  href="/work/create"
-                  className="block rounded-lg px-3 py-2 text-sm text-foreground hover:bg-slate-100"
-                >
-                  发布作品
-                </Link>
-                <Link
-                  href="/post/create"
-                  className="block rounded-lg px-3 py-2 text-sm text-foreground hover:bg-slate-100"
-                >
-                  发布帖子
-                </Link>
+                  <Link
+                    href="/work/create"
+                    className="block rounded-lg px-3 py-2 text-sm text-foreground hover:bg-slate-100"
+                  >
+                    发布作品
+                  </Link>
+                  <Link
+                    href="/post/create"
+                    className="block rounded-lg px-3 py-2 text-sm text-foreground hover:bg-slate-100"
+                  >
+                    发布帖子
+                  </Link>
                 </div>
               </div>
             </div>

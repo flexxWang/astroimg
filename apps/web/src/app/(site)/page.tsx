@@ -1,6 +1,6 @@
 import Link from "next/link";
-import WorkFeed from "@/components/WorkFeed";
-import LottieBanner from "@/components/LottieBanner";
+import WorkFeed from "@/features/works/components/WorkFeed";
+import LottieBanner from "@/shared/components/LottieBanner";
 import { Button } from "@/components/ui/button";
 import { serverFetch } from "@/lib/serverApi";
 import type { Paginated, WorkItem } from "@/lib/types";

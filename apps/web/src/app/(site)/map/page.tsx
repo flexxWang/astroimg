@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 
-const ObservationMap = dynamic(() => import("@/components/ObservationMap"), {
+const ObservationMap = dynamic(() => import("@/features/observations/components/ObservationMap"), {
   ssr: false,
 });
 

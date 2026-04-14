@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { fetchDrafts, publishDraft } from "@/services/draftApi";
+import { fetchDrafts, publishDraft } from "@/features/drafts/services/draftApi";
 import { excerpt } from "@/lib/format";
 import { useUserStore } from "@/stores/userStore";
 import { Button } from "@/components/ui/button";

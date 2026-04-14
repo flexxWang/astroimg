@@ -4,11 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import PostEditor from "@/components/PostEditor";
 import { Button } from "@/components/ui/button";
 import { useUserStore } from "@/stores/userStore";
-import { createPost } from "@/services/postApi";
-import { createDraft, publishDraft, updateDraft } from "@/services/draftApi";
+import PostEditor from "@/features/posts/components/PostEditor";
+import { createPost } from "@/features/posts/services/postApi";
+import {
+  createDraft,
+  publishDraft,
+  updateDraft,
+} from "@/features/drafts/services/draftApi";
 import { useToast } from "@/hooks/useToast";
 import { showErrorToast, showSuccessToast } from "@/lib/showToastMessage";
 

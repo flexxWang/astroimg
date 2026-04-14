@@ -1,5 +1,5 @@
-import AiCopilotClient from "@/components/AiCopilotClient";
-import { fetchInitialAiPlanHistory } from "@/services/aiCopilotServer";
+import AiCopilotClient from "@/features/ai/components/AiCopilotClient";
+import { fetchInitialAiPlanHistory } from "@/features/ai/services/aiCopilotServer";
 
 export default async function AiCopilotPage() {
   let initialHistoryPage;

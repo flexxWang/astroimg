@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { fetchMessages, markConversationRead, sendMessage } from "@/services/messageApi";
+import {
+  fetchMessages,
+  markConversationRead,
+  sendMessage,
+} from "@/features/messages/services/messageApi";
 import { useUserStore } from "@/stores/userStore";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,21 +32,21 @@ export default function MessageThreadPage() {
     enabled: Boolean(user),
   });
 
+  const messages = useMemo(() => data?.data ?? [], [data]);
+
   useEffect(() => {
     if (user) {
       markConversationRead(conversationId).catch(() => {});
     }
   }, [conversationId, user]);
 
-  if (!hydrated || !user) return null;
-
-  const messages = data?.data ?? [];
-
   const recipientId = useMemo(() => {
     const first = messages[0];
     if (!first || !user) return null;
     return first.senderId === user.id ? first.recipientId : first.senderId;
   }, [messages, user]);
+
+  if (!hydrated || !user) return null;
 
   const handleSend = async () => {
     if (!recipientId || !content.trim()) return;

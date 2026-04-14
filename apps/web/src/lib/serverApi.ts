@@ -12,6 +12,10 @@ const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE ||
   "http://127.0.0.1:4000";
 
+type ServerFetchError = Error & {
+  status?: number;
+};
+
 async function captureServerFetchError(
   error: unknown,
   path: string,
@@ -127,8 +131,8 @@ export async function serverFetch<T>(
     return payload as ApiResponse<T>;
   } catch (err) {
     if ((err as Error).name === "AbortError") {
-      const error = new Error("请求超时") as Error & { status?: number };
-      (error as any).status = 408;
+      const error: ServerFetchError = new Error("请求超时");
+      error.status = 408;
       await captureServerFetchError(error, path, options);
       throw error;
     }

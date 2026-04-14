@@ -1,6 +1,6 @@
 import { getErrorMessage } from "@/lib/errorMessages";
 import { showErrorToast } from "@/lib/showToastMessage";
-import { getApiErrorCode, getApiErrorStatus } from "@/services/api";
+import { getApiErrorCode, getApiErrorStatus } from "@/lib/apiClient";
 import { ErrorCode } from "@astroimg/shared/error-codes";
 
 export interface ShowApiErrorToastOptions {

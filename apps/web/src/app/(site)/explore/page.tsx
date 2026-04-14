@@ -1,5 +1,5 @@
-import PostFeed from "@/components/PostFeed";
-import ExploreSearch from "@/components/ExploreSearch";
+import ExploreSearch from "@/features/explore/components/ExploreSearch";
+import PostFeed from "@/features/posts/components/PostFeed";
 import { serverFetch } from "@/lib/serverApi";
 import type { Paginated, PostListItem } from "@/lib/types";
 

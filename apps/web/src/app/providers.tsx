@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactNode, useEffect, useState } from "react";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useUserStore } from "@/stores/userStore";
-import { fetchMe } from "@/services/userApi";
+import { fetchMe } from "@/features/users/services/userApi";
 
 export default function Providers({ children }: { children: ReactNode }) {
   const hydrate = useUserStore((state) => state.hydrate);

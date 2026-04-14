@@ -1,14 +1,14 @@
 import { notFound } from "next/navigation";
-import CommentList from "@/components/CommentList";
-import CommentForm from "@/components/CommentForm";
-import FollowButton from "@/components/FollowButton";
-import LikeButton from "@/components/LikeButton";
-import UserAvatar from "@/components/UserAvatar";
+import CommentForm from "@/features/comments/components/CommentForm";
+import CommentList from "@/features/comments/components/CommentList";
+import type { CommentItem } from "@/features/comments/components/CommentList";
+import FollowButton from "@/features/follows/components/FollowButton";
+import LikeButton from "@/features/posts/components/LikeButton";
+import UserAvatar from "@/shared/components/UserAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { serverFetch } from "@/lib/serverApi";
 import { sanitizeHtml } from "@/lib/sanitize";
-import type { CommentItem } from "@/components/CommentList";
 import type { PostListItem } from "@/lib/types";
 import Link from "next/link";
 

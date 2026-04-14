@@ -1,5 +1,5 @@
 import { ErrorCode } from "@astroimg/shared/error-codes";
-import { getApiErrorCode } from "@/services/api";
+import { getApiErrorCode } from "@/lib/apiClient";
 
 const ERROR_MESSAGE_OVERRIDE_MAP: Record<string, string> = {
   [ErrorCode.NETWORK_ERROR]: "网络连接异常，请检查网络后重试。",

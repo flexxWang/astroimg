@@ -13,8 +13,8 @@ import {
   createWork,
   fetchWorkDevices,
   fetchWorkTypes,
-} from "@/services/workApi";
-import { signUpload, uploadFile } from "@/services/uploadApi";
+} from "@/features/works/services/workApi";
+import { signUpload, uploadFile } from "@/features/uploads/services/uploadApi";
 import { showApiErrorToast } from "@/lib/showApiErrorToast";
 import { showErrorToast, showSuccessToast } from "@/lib/showToastMessage";
 
@@ -268,6 +268,8 @@ export default function CreateWorkPage() {
                     key={url}
                     className="relative overflow-hidden rounded-2xl border"
                   >
+                    {/* Remote user uploads can come from arbitrary object storage hosts. */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={url}
                       alt="作品预览"

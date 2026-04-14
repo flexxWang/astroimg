@@ -8,14 +8,14 @@ import {
   markConversationRead,
   searchMessages,
   sendMessage,
-} from "@/services/messageApi";
-import { searchUsers } from "@/services/userSearchApi";
+} from "@/features/messages/services/messageApi";
+import { searchUsers } from "@/features/users/services/userSearchApi";
 import { useUserStore } from "@/stores/userStore";
 import { getSocket } from "@/lib/socket";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useInfiniteMessages } from "@/hooks/useInfiniteMessages";
+import { useInfiniteMessages } from "@/features/messages/hooks/useInfiniteMessages";
 
 export default function MessagesPage() {
   return (
@@ -28,11 +28,12 @@ export default function MessagesPage() {
 function MessagesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const searchRecipientId = searchParams.get("to");
   const user = useUserStore((state) => state.user);
   const hydrated = useUserStore((state) => state.hydrated);
   const queryClient = useQueryClient();
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [recipientOverride, setRecipientOverride] = useState<string | null>(
+  const [draftRecipientOverride, setDraftRecipientOverride] = useState<string | null>(
     null,
   );
   const [search, setSearch] = useState("");
@@ -60,47 +61,28 @@ function MessagesPageContent() {
     }
   }, [hydrated, router, user]);
 
-  useEffect(() => {
-    const target = searchParams.get("to");
-    if (target) {
-      setRecipientOverride(target);
-      setActiveId(null);
-    }
-  }, [searchParams]);
-
   const { data: convData, refetch: refetchConversations } = useQuery({
     queryKey: ["conversations"],
     queryFn: () => fetchConversations(),
     enabled: Boolean(user),
   });
 
-  const conversations = convData?.data ?? [];
+  const conversations = useMemo(() => convData?.data ?? [], [convData]);
+  const recipientOverride = draftRecipientOverride ?? searchRecipientId;
+  const selectedConversationId = useMemo(() => {
+    if (recipientOverride) {
+      return (
+        conversations.find((conversation) => conversation.otherUserId === recipientOverride)
+          ?.id ?? null
+      );
+    }
 
-  useEffect(() => {
-    if (recipientOverride) return;
-    if (!activeId && conversations.length > 0) {
-      setActiveId(conversations[0].id);
-    }
-  }, [activeId, conversations, recipientOverride]);
-
-  useEffect(() => {
-    if (!recipientOverride || conversations.length === 0) return;
-    const matched = conversations.find(
-      (c) => c.otherUserId === recipientOverride,
-    );
-    if (!matched) return;
-    if (activeId && matched.id !== activeId) {
-      setRecipientOverride(null);
-      return;
-    }
-    if (!activeId) {
-      setActiveId(matched.id);
-    }
+    return activeId ?? conversations[0]?.id ?? null;
   }, [activeId, conversations, recipientOverride]);
 
   const activeConversation = useMemo(
-    () => conversations.find((c) => c.id === activeId) || null,
-    [activeId, conversations],
+    () => conversations.find((c) => c.id === selectedConversationId) || null,
+    [conversations, selectedConversationId],
   );
 
   const {
@@ -111,16 +93,16 @@ function MessagesPageContent() {
     appendMessage,
     reload,
     loading,
-  } = useInfiniteMessages(activeId);
+  } = useInfiniteMessages(selectedConversationId);
 
   useEffect(() => {
     if (!user) return;
     const socket = getSocket();
     const handler = () => {
       refetchConversations();
-      if (activeId) {
+      if (selectedConversationId) {
         reload();
-        markConversationRead(activeId).catch(() => {});
+        markConversationRead(selectedConversationId).catch(() => {});
       }
     };
     const readHandler = () => {
@@ -132,16 +114,16 @@ function MessagesPageContent() {
       socket.off("message:new", handler);
       socket.off("conversation:read", readHandler);
     };
-  }, [activeId, refetchConversations, reload, user]);
+  }, [refetchConversations, reload, selectedConversationId, user]);
 
   const messagesList = messages;
 
   useEffect(() => {
-    if (!activeId || !user) return;
-    markConversationRead(activeId)
+    if (!selectedConversationId || !user) return;
+    markConversationRead(selectedConversationId)
       .then(() => refetchConversations())
       .catch(() => {});
-  }, [activeId, refetchConversations, user]);
+  }, [refetchConversations, selectedConversationId, user]);
 
   useEffect(() => {
     if (debouncedMessageSearch.length > 0) return;
@@ -154,9 +136,9 @@ function MessagesPageContent() {
   }, [debouncedMessageSearch, messagesList.length]);
 
   useEffect(() => {
-    if (!activeId) return;
+    if (!selectedConversationId) return;
     pendingScrollRef.current = true;
-  }, [activeId]);
+  }, [selectedConversationId]);
 
   useLayoutEffect(() => {
     if (!pendingScrollRef.current) return;
@@ -174,12 +156,12 @@ function MessagesPageContent() {
         pendingScrollRef.current = false;
       });
     });
-  }, [activeId, loading, messagesList.length]);
+  }, [loading, messagesList.length, selectedConversationId]);
 
   const { data: searchMsgData } = useQuery({
-    queryKey: ["messages-search", activeId, debouncedMessageSearch],
-    queryFn: () => searchMessages(activeId!, debouncedMessageSearch),
-    enabled: Boolean(activeId && debouncedMessageSearch.length > 0),
+    queryKey: ["messages-search", selectedConversationId, debouncedMessageSearch],
+    queryFn: () => searchMessages(selectedConversationId!, debouncedMessageSearch),
+    enabled: Boolean(selectedConversationId && debouncedMessageSearch.length > 0),
   });
 
   const { data: searchData } = useQuery({
@@ -188,15 +170,13 @@ function MessagesPageContent() {
     enabled: debouncedSearch.length > 0,
   });
 
-  if (!hydrated || !user) return null;
-
   const handleSend = async () => {
     const recipientId = recipientOverride || activeConversation?.otherUserId;
     if (!recipientId || !content.trim()) return;
     try {
       const result = await sendMessage(recipientId, content);
       setContent("");
-      setRecipientOverride(null);
+      setDraftRecipientOverride(null);
       if (result.data.conversationId) {
         setActiveId(result.data.conversationId);
       }
@@ -221,7 +201,7 @@ function MessagesPageContent() {
   };
 
   const handleStartChat = async (userId: string) => {
-    setRecipientOverride(userId);
+    setDraftRecipientOverride(userId);
     setActiveId(null);
     setSearch("");
     setSearchOpen(false);
@@ -233,6 +213,10 @@ function MessagesPageContent() {
     }, 400);
     return () => window.clearTimeout(handle);
   }, [messageSearch]);
+
+  const searchedUsers = useMemo(() => searchData?.data ?? [], [searchData]);
+
+  if (!hydrated || !user) return null;
 
   const handleLoadMore = async () => {
     const el = scrollRef.current;
@@ -259,7 +243,7 @@ function MessagesPageContent() {
             />
             {searchOpen && search.length > 0 ? (
               <div className="rounded-xl border bg-white">
-                {(searchData?.data || []).map((u) => (
+                {searchedUsers.map((u) => (
                   <button
                     key={u.id}
                     className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50"
@@ -271,7 +255,7 @@ function MessagesPageContent() {
                     </span>
                   </button>
                 ))}
-                {(searchData?.data || []).length === 0 ? (
+                {searchedUsers.length === 0 ? (
                   <div className="px-3 py-2 text-xs text-muted-foreground">
                     没有匹配用户
                   </div>
@@ -284,10 +268,10 @@ function MessagesPageContent() {
               <button
                 key={c.id}
                 className={`w-full rounded-xl px-3 py-2 text-left ${
-                  c.id === activeId ? "bg-slate-100" : "hover:bg-slate-50"
+                  c.id === selectedConversationId ? "bg-slate-100" : "hover:bg-slate-50"
                 }`}
                 onClick={() => {
-                  setRecipientOverride(null);
+                  setDraftRecipientOverride(null);
                   setActiveId(c.id);
                 }}
               >

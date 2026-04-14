@@ -55,11 +55,17 @@ export class PostService {
     return this.postRepo.save(post);
   }
 
-  private applyKeyword(qb: ReturnType<PostService['baseQuery']>, keyword?: string) {
+  private applyKeyword(
+    qb: ReturnType<PostService['baseQuery']>,
+    keyword?: string,
+  ) {
     if (!keyword) return qb;
-    return qb.andWhere('(post.title LIKE :keyword OR post.content LIKE :keyword)', {
-      keyword: `%${keyword}%`,
-    });
+    return qb.andWhere(
+      '(post.title LIKE :keyword OR post.content LIKE :keyword)',
+      {
+        keyword: `%${keyword}%`,
+      },
+    );
   }
 
   async findAll(page = 1, pageSize = 20, keyword?: string) {
@@ -69,7 +75,10 @@ export class PostService {
         .offset((page - 1) * pageSize)
         .limit(pageSize)
         .getRawMany(),
-      this.applyKeyword(this.postRepo.createQueryBuilder('post'), keyword).getCount(),
+      this.applyKeyword(
+        this.postRepo.createQueryBuilder('post'),
+        keyword,
+      ).getCount(),
     ]);
     const items = rows.map((row) => this.mapPost(row));
     return {

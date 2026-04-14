@@ -4,10 +4,10 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import PostEditor from "@/components/PostEditor";
+import PostEditor from "@/features/posts/components/PostEditor";
 import { Button } from "@/components/ui/button";
 import { useUserStore } from "@/stores/userStore";
-import { fetchDraft, publishDraft, updateDraft } from "@/services/draftApi";
+import { fetchDraft, publishDraft, updateDraft } from "@/features/drafts/services/draftApi";
 import { useToast } from "@/hooks/useToast";
 import { showErrorToast, showSuccessToast } from "@/lib/showToastMessage";
 

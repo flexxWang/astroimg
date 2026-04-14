@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import WorkDetailClient from "@/components/WorkDetailClient";
+import WorkDetailClient from "@/features/works/components/WorkDetailClient";
 import { serverFetch } from "@/lib/serverApi";
 import type { WorkComment, WorkItem } from "@/lib/types";
 

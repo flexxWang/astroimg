@@ -7,7 +7,7 @@ import { Space_Grotesk } from "next/font/google";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { showErrorToast } from "@/lib/showToastMessage";
-import { fetchMe, register } from "@/services/userApi";
+import { fetchMe, register } from "@/features/users/services/userApi";
 import { useUserStore } from "@/stores/userStore";
 import { useToast } from "@/hooks/useToast";
 
