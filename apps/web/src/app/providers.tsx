@@ -1,5 +1,6 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactNode, useEffect, useState } from "react";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
@@ -9,6 +10,7 @@ import { fetchMe } from "@/services/userApi";
 export default function Providers({ children }: { children: ReactNode }) {
   const hydrate = useUserStore((state) => state.hydrate);
   const setUser = useUserStore((state) => state.setUser);
+  const user = useUserStore((state) => state.user);
   const [client] = useState(() =>
     new QueryClient({
       defaultOptions: {
@@ -26,6 +28,18 @@ export default function Providers({ children }: { children: ReactNode }) {
       .catch(() => setUser(null))
       .finally(() => hydrate());
   }, [hydrate, setUser]);
+
+  useEffect(() => {
+    if (user) {
+      Sentry.setUser({
+        id: user.id,
+        username: user.username,
+      });
+      return;
+    }
+
+    Sentry.setUser(null);
+  }, [user]);
 
   return (
     <QueryClientProvider client={client}>

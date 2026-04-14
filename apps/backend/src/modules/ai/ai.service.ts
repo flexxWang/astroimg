@@ -1,10 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AiPlanSession } from './ai-plan-session.entity';
 import { CreateCopilotPlanDto } from './dto/create-copilot-plan.dto';
 import { ObservationPoint } from '../observation/observation.entity';
 import { AppException, ErrorCode } from '@/common/exceptions';
+import { AppLogger } from '@/common/logging/app-logger.service';
 
 type Target = {
   name: string;
@@ -54,13 +55,12 @@ type StreamWriter = {
 
 @Injectable()
 export class AiService {
-  private readonly logger = new Logger(AiService.name);
-
   constructor(
     @InjectRepository(AiPlanSession)
     private readonly planRepo: Repository<AiPlanSession>,
     @InjectRepository(ObservationPoint)
     private readonly observationRepo: Repository<ObservationPoint>,
+    private readonly logger: AppLogger,
   ) {}
 
   private scoreTargets(preference: string, level: string): Target[] {
@@ -699,9 +699,12 @@ export class AiService {
 
     if (!response.ok) {
       const detail = await response.text();
-      this.logger.warn(
-        `OpenAI request failed: ${response.status} ${detail.slice(0, 300)}`,
-      );
+      this.logger.warn('ai.provider.request_failed', {
+        provider: 'openai',
+        stream: false,
+        statusCode: response.status,
+        detail: detail.slice(0, 300),
+      });
       return null;
     }
 
@@ -786,11 +789,11 @@ export class AiService {
           error?: { message?: string };
         };
       } catch (error) {
-        this.logger.warn(
-          `OpenAI SSE parse skipped for event ${event}: ${
-            error instanceof Error ? error.message : 'unknown error'
-          }`,
-        );
+        this.logger.warn('ai.provider.sse_parse_skipped', {
+          provider: 'openai',
+          event,
+          message: error instanceof Error ? error.message : 'unknown error',
+        });
         return;
       }
 
@@ -840,9 +843,12 @@ export class AiService {
 
     if (!response.ok) {
       const detail = await response.text();
-      this.logger.warn(
-        `OpenRouter request failed: ${response.status} ${detail.slice(0, 300)}`,
-      );
+      this.logger.warn('ai.provider.request_failed', {
+        provider: 'openrouter',
+        stream: false,
+        statusCode: response.status,
+        detail: detail.slice(0, 300),
+      });
       return null;
     }
 
@@ -919,11 +925,10 @@ export class AiService {
           }>;
         };
       } catch (error) {
-        this.logger.warn(
-          `OpenRouter SSE parse skipped: ${
-            error instanceof Error ? error.message : 'unknown error'
-          }`,
-        );
+        this.logger.warn('ai.provider.sse_parse_skipped', {
+          provider: 'openrouter',
+          message: error instanceof Error ? error.message : 'unknown error',
+        });
         return;
       }
 
@@ -968,7 +973,10 @@ export class AiService {
           : await this.requestOpenAIPlan(provider, prompt, controller.signal);
 
       if (!jsonText) {
-        this.logger.warn(`${provider.provider} response missing plan json`);
+        this.logger.warn('ai.provider.response_missing_json', {
+          provider: provider.provider,
+          model: provider.model,
+        });
         return null;
       }
 
@@ -1002,9 +1010,12 @@ export class AiService {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'unknown provider error';
-      this.logger.warn(
-        `${provider.provider} generation failed, fallback enabled: ${message}`,
-      );
+      this.logger.warn('ai.provider.generation_failed', {
+        provider: provider.provider,
+        model: provider.model,
+        fallbackEnabled: true,
+        message,
+      });
       return null;
     } finally {
       clearTimeout(timeout);

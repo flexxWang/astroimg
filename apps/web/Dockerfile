@@ -11,6 +11,12 @@ COPY packages/shared/package.json packages/shared/package.json
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
+ARG SENTRY_AUTH_TOKEN
+ARG SENTRY_ORG
+ARG SENTRY_PROJECT
+ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
+ENV SENTRY_ORG=$SENTRY_ORG
+ENV SENTRY_PROJECT=$SENTRY_PROJECT
 COPY . .
 RUN pnpm --filter @astroimg/shared build
 RUN pnpm --filter @astroimg/web build

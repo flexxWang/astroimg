@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import {
   createRequestError,
   isApiResponse,
@@ -10,6 +11,54 @@ const API_BASE =
   process.env.API_BASE ||
   process.env.NEXT_PUBLIC_API_BASE ||
   "http://127.0.0.1:4000";
+
+async function captureServerFetchError(
+  error: unknown,
+  path: string,
+  options: RequestInit,
+) {
+  const method = options.method || "GET";
+  const reportError =
+    error instanceof Error
+      ? new Error(`SSR serverFetch failed: ${method} ${path}`, {
+          cause: error,
+        })
+      : new Error(`SSR serverFetch failed: ${method} ${path}`);
+
+  const configureScope = (scope: {
+    setLevel: (value: "error") => void;
+    setTag: (key: string, value: string) => void;
+    setFingerprint: (value: string[]) => void;
+    setContext: (name: string, context: Record<string, unknown>) => void;
+    setExtra: (key: string, value: unknown) => void;
+  }) => {
+    scope.setLevel("error");
+    scope.setTag("fetch_layer", "server");
+    scope.setFingerprint(["serverFetch", method, path]);
+    scope.setContext("server_fetch", {
+      path,
+      url: `${API_BASE}${path}`,
+      method,
+      hasBody: options.body !== undefined,
+    });
+    scope.setExtra(
+      "original_error",
+      error instanceof Error ? error.message : String(error),
+    );
+  };
+
+  Sentry.withScope((scope) => {
+    configureScope(scope);
+    Sentry.captureException(reportError);
+    Sentry.captureMessage(`SSR serverFetch failed: ${method} ${path}`, "error");
+  });
+
+  try {
+    await Sentry.flush(2_000);
+  } catch {
+    // Swallow flush failures so API errors still surface to the caller.
+  }
+}
 
 export async function serverFetch<T>(
   path: string,
@@ -80,8 +129,11 @@ export async function serverFetch<T>(
     if ((err as Error).name === "AbortError") {
       const error = new Error("请求超时") as Error & { status?: number };
       (error as any).status = 408;
+      await captureServerFetchError(error, path, options);
       throw error;
     }
+
+    await captureServerFetchError(err, path, options);
     throw err;
   } finally {
     clearTimeout(timer);

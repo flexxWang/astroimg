@@ -34,7 +34,9 @@ export class RedisIoAdapter extends IoAdapter {
 
     await Promise.all([this.pubClient.connect(), this.subClient.connect()]);
     this.adapterConstructor = createAdapter(this.pubClient, this.subClient);
-    this.logger.log(`Socket.IO Redis adapter connected to ${host}:${port}/${database}`);
+    this.logger.log(
+      `Socket.IO Redis adapter connected to ${host}:${port}/${database}`,
+    );
   }
 
   createIOServer(port: number, options?: ServerOptions) {

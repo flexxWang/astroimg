@@ -68,6 +68,27 @@ export function validateEnv(env: Record<string, unknown>) {
     NODE_ENV: readString(env, 'NODE_ENV', 'development').toLowerCase(),
     PORT: readNumber(env, 'PORT', 4000, { min: 1, max: 65535 }),
     LOG_LEVEL: readString(env, 'LOG_LEVEL', 'info'),
+    MONITORING_ENABLED: readBoolean(env, 'MONITORING_ENABLED', true),
+    MONITORING_SERVICE_NAME: readString(
+      env,
+      'MONITORING_SERVICE_NAME',
+      'astroimg-backend',
+    ),
+    MONITORING_ENVIRONMENT: readString(
+      env,
+      'MONITORING_ENVIRONMENT',
+      readString(env, 'NODE_ENV', 'development').toLowerCase(),
+    ),
+    SENTRY_ENABLED: readBoolean(env, 'SENTRY_ENABLED', false),
+    SENTRY_DSN: typeof env.SENTRY_DSN === 'string' ? env.SENTRY_DSN.trim() : '',
+    SENTRY_RELEASE:
+      typeof env.SENTRY_RELEASE === 'string' ? env.SENTRY_RELEASE.trim() : '',
+    SENTRY_TRACES_SAMPLE_RATE: readNumber(
+      env,
+      'SENTRY_TRACES_SAMPLE_RATE',
+      0,
+      { min: 0, max: 1 },
+    ),
     TRUST_PROXY: readBoolean(env, 'TRUST_PROXY', false),
     CORS_ALLOWED_ORIGINS: readString(env, 'CORS_ALLOWED_ORIGINS', ''),
     COOKIE_DOMAIN:

@@ -4,8 +4,9 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
-  Logger,
 } from '@nestjs/common';
+import { AppLogger } from '@/common/logging/app-logger.service';
+import { Sentry, isBackendSentryEnabled } from '@/common/monitoring/sentry';
 import { ErrorCode } from '../exceptions/error-codes';
 import { getErrorMessageByCode } from '../exceptions/error-messages';
 
@@ -30,7 +31,7 @@ function defaultErrorCode(status: number) {
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger(HttpExceptionFilter.name);
+  constructor(private readonly logger: AppLogger) {}
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
@@ -69,24 +70,61 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const details = responseBody.details;
     const requestId =
       typeof request.requestId === 'string' ? request.requestId : undefined;
+    const traceId =
+      typeof request.traceId === 'string' ? request.traceId : undefined;
+    const userId =
+      typeof request.user?.id === 'string' ? request.user.id : undefined;
 
     const meta = {
       method: request.method,
       path: request.url,
       requestId,
+      traceId,
+      userId,
       errorCode,
       status,
     };
 
     if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
-      const stack = exception instanceof Error ? exception.stack : undefined;
+      if (isBackendSentryEnabled()) {
+        Sentry.withScope((scope) => {
+          scope.setLevel('error');
+          scope.setTag('error_code', String(errorCode));
+          scope.setTag('request_id', requestId ?? 'unknown');
+          scope.setTag('trace_id', traceId ?? requestId ?? 'unknown');
+          scope.setContext('request', {
+            method: request.method,
+            path: request.url,
+            requestId,
+            traceId,
+          });
+          if (userId) {
+            scope.setUser({ id: userId });
+          }
+          scope.setExtras(
+            details && typeof details === 'object'
+              ? { details: details as Record<string, unknown> }
+              : {},
+          );
+          Sentry.captureException(
+            exception instanceof Error
+              ? exception
+              : new Error(
+                  typeof message === 'string'
+                    ? message
+                    : JSON.stringify(message),
+                ),
+          );
+        });
+      }
+
       this.logger.error(
         typeof message === 'string' ? message : JSON.stringify(message),
-        stack,
-        JSON.stringify(meta),
+        exception,
+        meta,
       );
     } else {
-      this.logger.warn(JSON.stringify({ ...meta, message }));
+      this.logger.warn('http.request.failed', { ...meta, message });
     }
 
     response.status(status).json({
@@ -95,6 +133,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       msg: message,
       path: request.url,
       requestId,
+      traceId,
       errorCode,
       details,
       timestamp: new Date().toISOString(),

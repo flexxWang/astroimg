@@ -7,8 +7,6 @@ import {
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { CacheModule } from '@nestjs/cache-manager';
-import { WinstonModule } from 'nest-winston';
-import { transports, format } from 'winston';
 import { redisStore } from 'cache-manager-redis-yet';
 import { APP_GUARD } from '@nestjs/core';
 import databaseConfig from './config/database.config';
@@ -38,6 +36,7 @@ import { ResponseInterceptor } from './common/interceptors/response.interceptor'
 import { RequestContextMiddleware } from './common/middleware/request-context.middleware';
 import { ThrottleGuard } from './common/guards/throttle.guard';
 import { getBackendEnvFilePaths } from './config/env-files';
+import { ObservabilityModule } from './common/observability/observability.module';
 
 @Module({
   imports: [
@@ -47,11 +46,7 @@ import { getBackendEnvFilePaths } from './config/env-files';
       load: [appConfig, databaseConfig, redisConfig, jwtConfig],
       validate: validateEnv,
     }),
-    WinstonModule.forRoot({
-      level: process.env.LOG_LEVEL || 'info',
-      format: format.combine(format.timestamp(), format.json()),
-      transports: [new transports.Console()],
-    }),
+    ObservabilityModule,
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) =>

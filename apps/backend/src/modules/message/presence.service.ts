@@ -1,16 +1,19 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
 import { createClient, type RedisClientType } from 'redis';
+import { AppLogger } from '@/common/logging/app-logger.service';
 
 @Injectable()
 export class PresenceService implements OnModuleInit, OnModuleDestroy {
-  private readonly logger = new Logger(PresenceService.name);
   private readonly online = new Map<string, Set<string>>();
   private readonly instanceId = randomUUID();
   private redisClient?: RedisClientType;
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly logger: AppLogger,
+  ) {}
 
   async onModuleInit() {
     const host = this.configService.getOrThrow<string>('redis.host');
@@ -25,7 +28,7 @@ export class PresenceService implements OnModuleInit, OnModuleDestroy {
     });
 
     this.redisClient.on('error', (error) => {
-      this.logger.error(`Presence redis error: ${error.message}`);
+      this.logger.error('presence.redis.error', error);
     });
 
     await this.redisClient.connect();

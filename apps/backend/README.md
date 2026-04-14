@@ -22,6 +22,19 @@ Backend env files now follow this convention:
 
 `NODE_ENV` decides which file is loaded. When present, legacy `.env` is only used as a fallback.
 
+## Sentry
+
+Backend Sentry is controlled by these env vars:
+
+```env
+SENTRY_ENABLED=false
+SENTRY_DSN=
+SENTRY_RELEASE=
+SENTRY_TRACES_SAMPLE_RATE=0
+```
+
+When enabled, 5xx exceptions are reported with `requestId`, `traceId`, and authenticated `userId`.
+
 ## Local infra with Docker Compose
 
 Start MySQL, Redis and MinIO:

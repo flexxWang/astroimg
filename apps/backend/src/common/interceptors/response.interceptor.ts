@@ -20,6 +20,7 @@ export class ResponseInterceptor implements NestInterceptor {
           data,
           msg: 'ok',
           requestId: request?.requestId,
+          traceId: request?.traceId,
           timestamp: new Date().toISOString(),
         };
       }),
