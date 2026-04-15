@@ -1,7 +1,11 @@
 const TRUE_VALUES = new Set(['true', '1', 'yes', 'on']);
 const FALSE_VALUES = new Set(['false', '0', 'no', 'off', '']);
 
-function readString(env: Record<string, unknown>, key: string, fallback?: string) {
+function readString(
+  env: Record<string, unknown>,
+  key: string,
+  fallback?: string,
+) {
   const raw = env[key];
   if (typeof raw === 'string' && raw.trim()) {
     return raw.trim();
@@ -20,9 +24,7 @@ function readNumber(
 ) {
   const raw = env[key];
   const maybeValue =
-    typeof raw === 'string' && raw.trim() !== ''
-      ? Number(raw)
-      : fallback;
+    typeof raw === 'string' && raw.trim() !== '' ? Number(raw) : fallback;
 
   if (!Number.isFinite(maybeValue)) {
     throw new Error(`Invalid number environment variable: ${key}`);
@@ -83,12 +85,10 @@ export function validateEnv(env: Record<string, unknown>) {
     SENTRY_DSN: typeof env.SENTRY_DSN === 'string' ? env.SENTRY_DSN.trim() : '',
     SENTRY_RELEASE:
       typeof env.SENTRY_RELEASE === 'string' ? env.SENTRY_RELEASE.trim() : '',
-    SENTRY_TRACES_SAMPLE_RATE: readNumber(
-      env,
-      'SENTRY_TRACES_SAMPLE_RATE',
-      0,
-      { min: 0, max: 1 },
-    ),
+    SENTRY_TRACES_SAMPLE_RATE: readNumber(env, 'SENTRY_TRACES_SAMPLE_RATE', 0, {
+      min: 0,
+      max: 1,
+    }),
     TRUST_PROXY: readBoolean(env, 'TRUST_PROXY', false),
     CORS_ALLOWED_ORIGINS: readString(env, 'CORS_ALLOWED_ORIGINS', ''),
     COOKIE_DOMAIN:
@@ -115,15 +115,34 @@ export function validateEnv(env: Record<string, unknown>) {
     MINIO_SECRET_KEY: readString(env, 'MINIO_SECRET_KEY', 'minioadmin'),
     MINIO_BUCKET: readString(env, 'MINIO_BUCKET', 'astroimg'),
     MINIO_USE_SSL: readBoolean(env, 'MINIO_USE_SSL', false),
-    MINIO_PUBLIC_URL: readString(env, 'MINIO_PUBLIC_URL', 'http://127.0.0.1:9000'),
+    MINIO_PUBLIC_URL: readString(
+      env,
+      'MINIO_PUBLIC_URL',
+      'http://127.0.0.1:9000',
+    ),
     AI_PROVIDER: readString(env, 'AI_PROVIDER', 'openrouter').toLowerCase(),
-    OPENAI_API_KEY: typeof env.OPENAI_API_KEY === 'string' ? env.OPENAI_API_KEY.trim() : '',
-    OPENAI_BASE_URL: readString(env, 'OPENAI_BASE_URL', 'https://api.openai.com/v1'),
+    OPENAI_API_KEY:
+      typeof env.OPENAI_API_KEY === 'string' ? env.OPENAI_API_KEY.trim() : '',
+    OPENAI_BASE_URL: readString(
+      env,
+      'OPENAI_BASE_URL',
+      'https://api.openai.com/v1',
+    ),
     OPENAI_MODEL: readString(env, 'OPENAI_MODEL', 'gpt-5.2'),
     OPENROUTER_API_KEY:
-      typeof env.OPENROUTER_API_KEY === 'string' ? env.OPENROUTER_API_KEY.trim() : '',
-    OPENROUTER_BASE_URL: readString(env, 'OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1'),
-    OPENROUTER_MODEL: readString(env, 'OPENROUTER_MODEL', 'openai/gpt-oss-20b:free'),
+      typeof env.OPENROUTER_API_KEY === 'string'
+        ? env.OPENROUTER_API_KEY.trim()
+        : '',
+    OPENROUTER_BASE_URL: readString(
+      env,
+      'OPENROUTER_BASE_URL',
+      'https://openrouter.ai/api/v1',
+    ),
+    OPENROUTER_MODEL: readString(
+      env,
+      'OPENROUTER_MODEL',
+      'openai/gpt-oss-20b:free',
+    ),
   };
 
   if (!['openai', 'openrouter'].includes(validated.AI_PROVIDER)) {

@@ -60,7 +60,7 @@ export class UploadService {
       );
       const fileUrl = `${this.publicBase}/${this.bucket}/${objectKey}`;
       return { uploadUrl, fileUrl, objectKey };
-    } catch (error) {
+    } catch {
       throw AppException.internal(ErrorCode.UPLOAD_SIGN_FAILED);
     }
   }

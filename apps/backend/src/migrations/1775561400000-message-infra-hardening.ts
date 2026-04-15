@@ -1,5 +1,9 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
+type StatisticRow = {
+  1: number;
+};
+
 export class MessageInfraHardening1775561400000 implements MigrationInterface {
   name = 'MessageInfraHardening1775561400000';
 
@@ -122,8 +126,12 @@ export class MessageInfraHardening1775561400000 implements MigrationInterface {
     tableName: string,
     indexName: string,
   ) {
-    const database = queryRunner.connection.options.database;
-    const rows = await queryRunner.query(
+    const { database } = queryRunner.connection.options;
+    if (typeof database !== 'string' || database.length === 0) {
+      throw new Error('Database name is required to inspect index metadata.');
+    }
+
+    const rows: unknown = await queryRunner.query(
       `
         SELECT 1
         FROM INFORMATION_SCHEMA.STATISTICS
@@ -135,6 +143,6 @@ export class MessageInfraHardening1775561400000 implements MigrationInterface {
       [database, tableName, indexName],
     );
 
-    return Array.isArray(rows) && rows.length > 0;
+    return Array.isArray(rows) && (rows as StatisticRow[]).length > 0;
   }
 }

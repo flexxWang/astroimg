@@ -4,11 +4,13 @@ import { Reflector } from '@nestjs/core';
 import {
   CallHandler,
   ExecutionContext,
+  HttpException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { of, firstValueFrom } from 'rxjs';
 import { DataSource } from 'typeorm';
+import type { Response } from 'express';
 import appConfig from '../src/config/app.config';
 import { ResponseInterceptor } from '../src/common/interceptors/response.interceptor';
 import { ThrottleGuard } from '../src/common/guards/throttle.guard';
@@ -60,7 +62,7 @@ describe('Backend infrastructure smoke tests', () => {
         {
           provide: CACHE_MANAGER,
           useValue: {
-            async get(key: string) {
+            get(key: string) {
               const item = cacheStore.get(key);
               if (!item || item.expiresAt <= Date.now()) {
                 cacheStore.delete(key);
@@ -68,7 +70,7 @@ describe('Backend infrastructure smoke tests', () => {
               }
               return item.value;
             },
-            async set(key: string, value: unknown, ttl: number) {
+            set(key: string, value: unknown, ttl: number) {
               cacheStore.set(key, {
                 value,
                 expiresAt: Date.now() + ttl,
@@ -136,17 +138,18 @@ describe('Backend infrastructure smoke tests', () => {
   });
 
   it('sets secure cookie options for auth login', async () => {
+    const cookie = jest.fn();
     const res = {
-      cookie: jest.fn(),
-    };
+      cookie,
+    } as Pick<Response, 'cookie'> as Response;
 
     const result = await authController.login(
       { usernameOrEmail: 'demo', password: 'secret123' },
-      res as any,
+      res,
     );
 
     expect(result.accessToken).toBe('token-login');
-    expect(res.cookie).toHaveBeenCalledWith(
+    expect(cookie).toHaveBeenCalledWith(
       'access_token',
       'token-login',
       expect.objectContaining({
@@ -158,12 +161,14 @@ describe('Backend infrastructure smoke tests', () => {
   });
 
   it('throttles repeated auth login requests', async () => {
-    const handler = AuthController.prototype.login;
     const clazz = AuthController;
 
     const createContext = (): ExecutionContext =>
       ({
-        getHandler: () => handler,
+        getHandler: () =>
+          Reflect.get(AuthController.prototype, 'login') as (
+            ...args: unknown[]
+          ) => unknown,
         getClass: () => clazz,
         switchToHttp: () => ({
           getRequest: () => ({
@@ -180,19 +185,20 @@ describe('Backend infrastructure smoke tests', () => {
       );
     }
 
-    await expect(
-      throttleGuard.canActivate(createContext()),
-    ).rejects.toMatchObject({
-      response: expect.objectContaining({
-        errorCode: 'TOO_MANY_REQUESTS',
-      }),
+    const thrown = await throttleGuard
+      .canActivate(createContext())
+      .catch((error: unknown) => error);
+
+    expect(thrown).toBeInstanceOf(HttpException);
+    expect((thrown as HttpException).getResponse()).toMatchObject({
+      errorCode: 'TOO_MANY_REQUESTS',
     });
   });
 
   it('wraps successful responses with request id metadata', async () => {
     const context = {
       switchToHttp: () => ({
-        getResponse: () => ({ statusCode: 200 }),
+        getResponse: () => ({ statusCode: 200 }) as Response,
         getRequest: () => ({ requestId: 'req-test-1' }),
       }),
     } as unknown as ExecutionContext;

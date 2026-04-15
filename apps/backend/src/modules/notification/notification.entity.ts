@@ -9,7 +9,11 @@ import {
 export type NotificationType = 'like' | 'comment' | 'follow';
 
 @Index('IDX_notifications_user_created_at', ['userId', 'createdAt'])
-@Index('IDX_notifications_user_read_created_at', ['userId', 'read', 'createdAt'])
+@Index('IDX_notifications_user_read_created_at', [
+  'userId',
+  'read',
+  'createdAt',
+])
 @Entity('notifications')
 export class Notification {
   @PrimaryGeneratedColumn('uuid')

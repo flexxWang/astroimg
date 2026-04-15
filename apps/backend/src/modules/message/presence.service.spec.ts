@@ -1,15 +1,20 @@
+import type { ConfigService } from '@nestjs/config';
+import type { AppLogger } from '@/common/logging/app-logger.service';
 import { PresenceService } from './presence.service';
 
 describe('PresenceService', () => {
   let service: PresenceService;
 
   beforeEach(() => {
-    service = new PresenceService({
-      getOrThrow: jest.fn(),
-      get: jest.fn(),
-    } as any, {
-      error: jest.fn(),
-    } as any);
+    service = new PresenceService(
+      {
+        getOrThrow: jest.fn(),
+        get: jest.fn(),
+      } as unknown as ConfigService,
+      {
+        error: jest.fn(),
+      } as unknown as AppLogger,
+    );
   });
 
   it('marks the first connection as an online state change', async () => {

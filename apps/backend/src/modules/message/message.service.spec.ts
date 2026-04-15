@@ -1,51 +1,57 @@
-import { QueryFailedError } from 'typeorm';
+import { QueryFailedError, type DataSource } from 'typeorm';
+import type { Repository } from 'typeorm';
 import { MessageService } from './message.service';
 import { Message } from './message.entity';
+import { Conversation } from './conversation.entity';
+import { User } from '../user/user.entity';
+import { MessageGateway } from './message.gateway';
+import { PresenceService } from './presence.service';
+
+type MockGateway = {
+  emitToUser: jest.Mock<void, [string, string, unknown]>;
+};
+
+type MockDataSource = {
+  transaction: jest.Mock<
+    Promise<unknown>,
+    [(manager: object) => Promise<unknown>]
+  >;
+};
 
 describe('MessageService', () => {
   const createService = () => {
-    const messageRepo = {
-      createQueryBuilder: jest.fn(),
-    } as any;
-    const conversationRepo = {
-      findOne: jest.fn(),
-    } as any;
-    const userRepo = {
-      findBy: jest.fn(),
-    } as any;
-    const gateway = {
-      emitToUser: jest.fn(),
-    } as any;
+    const gateway: MockGateway = {
+      emitToUser: jest.fn<void, [string, string, unknown]>(),
+    };
     const presenceService = {
       isOnline: jest.fn(),
-    } as any;
-    const dataSource = {
-      transaction: jest.fn(),
-    } as any;
+    } as unknown as PresenceService;
+    const dataSource: MockDataSource = {
+      transaction: jest.fn<
+        Promise<unknown>,
+        [(manager: object) => Promise<unknown>]
+      >(),
+    };
 
     const service = new MessageService(
-      messageRepo,
-      conversationRepo,
-      userRepo,
-      gateway,
+      {} as Repository<Message>,
+      {} as Repository<Conversation>,
+      {} as Repository<User>,
+      gateway as unknown as MessageGateway,
       presenceService,
-      dataSource,
+      dataSource as unknown as DataSource,
     );
 
     return {
       service,
-      messageRepo,
-      conversationRepo,
-      userRepo,
       gateway,
-      presenceService,
       dataSource,
     };
   };
 
   it('sends a message inside a transaction and emits to both participants', async () => {
     const { service, gateway, dataSource } = createService();
-    dataSource.transaction.mockImplementation(async (handler: any) => {
+    dataSource.transaction.mockImplementation(async (handler) => {
       const manager = {
         findOne: jest.fn().mockResolvedValue({
           id: 'conversation-1',
@@ -55,7 +61,9 @@ describe('MessageService', () => {
         }),
         save: jest
           .fn()
-          .mockImplementation(async (_entity: unknown, value: unknown) => value),
+          .mockImplementation((_entity: unknown, value: unknown) =>
+            Promise.resolve(value),
+          ),
         create: jest
           .fn()
           .mockImplementation((_entity: unknown, value: unknown) => value),
@@ -87,7 +95,7 @@ describe('MessageService', () => {
   it('recovers from a duplicate conversation insert by reloading the conversation', async () => {
     const { service, dataSource } = createService();
 
-    dataSource.transaction.mockImplementation(async (handler: any) => {
+    dataSource.transaction.mockImplementation(async (handler) => {
       const duplicateError = new QueryFailedError(
         'INSERT INTO conversations ...',
         [],
@@ -97,19 +105,18 @@ describe('MessageService', () => {
       );
 
       const manager = {
-        findOne: jest
-          .fn()
-          .mockResolvedValueOnce(null)
-          .mockResolvedValueOnce({
-            id: 'conversation-1',
-            userAId: 'user-a',
-            userBId: 'user-b',
-            lastMessage: 'hello',
-          }),
+        findOne: jest.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({
+          id: 'conversation-1',
+          userAId: 'user-a',
+          userBId: 'user-b',
+          lastMessage: 'hello',
+        }),
         save: jest
           .fn()
           .mockRejectedValueOnce(duplicateError)
-          .mockImplementation(async (_entity: unknown, value: unknown) => value),
+          .mockImplementation((_entity: unknown, value: unknown) =>
+            Promise.resolve(value),
+          ),
         create: jest
           .fn()
           .mockImplementation((_entity: unknown, value: unknown) => value),
@@ -134,7 +141,7 @@ describe('MessageService', () => {
     const { service, gateway, dataSource } = createService();
     const update = jest.fn().mockResolvedValue({ affected: 2 });
 
-    dataSource.transaction.mockImplementation(async (handler: any) => {
+    dataSource.transaction.mockImplementation(async (handler) => {
       const manager = {
         findOne: jest.fn().mockResolvedValue({
           id: 'conversation-1',

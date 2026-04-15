@@ -1,5 +1,13 @@
 import AppDataSource from '../data-source';
 
+type TableCountRow = {
+  count: string | number;
+};
+
+type MigrationRow = {
+  id: number;
+};
+
 const INITIAL_MIGRATION = {
   timestamp: 1775552661411,
   name: 'InitialSchema1775552661411',
@@ -8,7 +16,7 @@ const INITIAL_MIGRATION = {
 async function baselineExistingDatabase() {
   await AppDataSource.initialize();
 
-  const tableCheck = await AppDataSource.query(
+  const tableCheck: TableCountRow[] = await AppDataSource.query(
     `SELECT COUNT(*) AS count
      FROM information_schema.tables
      WHERE table_schema = DATABASE()
@@ -31,7 +39,7 @@ async function baselineExistingDatabase() {
     ) ENGINE=InnoDB
   `);
 
-  const rows = await AppDataSource.query(
+  const rows: MigrationRow[] = await AppDataSource.query(
     'SELECT id FROM migrations WHERE timestamp = ? AND name = ? LIMIT 1',
     [INITIAL_MIGRATION.timestamp, INITIAL_MIGRATION.name],
   );

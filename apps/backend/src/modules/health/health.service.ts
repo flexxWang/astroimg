@@ -37,9 +37,7 @@ export class HealthService {
       cache: await this.runCheck(() => this.checkCache(), timeoutMs),
       storage: await this.runCheck(() => this.checkStorage(), timeoutMs),
     };
-    const isReady = Object.values(checks).every(
-      (item) => item.status === 'up',
-    );
+    const isReady = Object.values(checks).every((item) => item.status === 'up');
 
     return {
       status: isReady ? 'ok' : 'degraded',

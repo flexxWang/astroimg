@@ -23,7 +23,9 @@ export function initBackendSentry(configService: ConfigService) {
       configService.get<string>('app.monitoring.environment') ??
       process.env.NODE_ENV ??
       'development',
-    release: configService.get<string | undefined>('app.monitoring.sentry.release'),
+    release: configService.get<string | undefined>(
+      'app.monitoring.sentry.release',
+    ),
     tracesSampleRate:
       configService.get<number>('app.monitoring.sentry.tracesSampleRate') ?? 0,
     sendDefaultPii: false,

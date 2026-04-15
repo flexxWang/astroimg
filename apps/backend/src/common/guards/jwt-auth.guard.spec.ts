@@ -4,8 +4,9 @@ import { RequestContextService } from '@/common/context/request-context.service'
 
 describe('JwtAuthGuard', () => {
   it('writes authenticated user id into request context', () => {
+    const setUserId = jest.fn();
     const requestContext = {
-      setUserId: jest.fn(),
+      setUserId,
     } as unknown as RequestContextService;
     const guard = new JwtAuthGuard(requestContext);
 
@@ -17,7 +18,7 @@ describe('JwtAuthGuard', () => {
     );
 
     expect(user).toEqual({ id: 'user-123', username: 'demo' });
-    expect(requestContext.setUserId).toHaveBeenCalledWith('user-123');
+    expect(setUserId).toHaveBeenCalledWith('user-123');
   });
 
   it('throws unauthorized when user is missing', () => {

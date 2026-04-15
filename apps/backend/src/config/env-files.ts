@@ -10,8 +10,5 @@ export function getBackendEnvFilePaths() {
         ? '.env.production'
         : '.env.local';
 
-  return [
-    resolve(root, envFileByMode),
-    resolve(root, '.env'),
-  ];
+  return [resolve(root, envFileByMode), resolve(root, '.env')];
 }

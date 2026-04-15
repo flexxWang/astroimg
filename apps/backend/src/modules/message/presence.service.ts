@@ -18,7 +18,9 @@ export class PresenceService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit() {
     const host = this.configService.getOrThrow<string>('redis.host');
     const port = this.configService.getOrThrow<number>('redis.port');
-    const password = this.configService.get<string | undefined>('redis.password');
+    const password = this.configService.get<string | undefined>(
+      'redis.password',
+    );
     const database = this.configService.getOrThrow<number>('redis.db');
 
     this.redisClient = createClient({

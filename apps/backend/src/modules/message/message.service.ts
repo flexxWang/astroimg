@@ -14,6 +14,11 @@ import { MessageGateway } from './message.gateway';
 import { PresenceService } from './presence.service';
 import { AppException, ErrorCode } from '@/common/exceptions';
 
+type UnreadCountRow = {
+  conversationId: string;
+  count: string | number;
+};
+
 @Injectable()
 export class MessageService {
   constructor(
@@ -66,7 +71,7 @@ export class MessageService {
         .andWhere('m.recipient_id = :userId', { userId })
         .andWhere('m.read = false')
         .groupBy('m.conversation_id')
-        .getRawMany();
+        .getRawMany<UnreadCountRow>();
       unread.forEach((row) => {
         unreadMap.set(row.conversationId, Number(row.count));
       });

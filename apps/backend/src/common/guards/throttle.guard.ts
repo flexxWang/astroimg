@@ -42,10 +42,11 @@ export class ThrottleGuard implements CanActivate {
       return true;
     }
 
-    const options = this.reflector.getAllAndOverride<ThrottleOptions>(
-      THROTTLE_OPTIONS_KEY,
-      [context.getHandler(), context.getClass()],
-    ) ?? this.defaultOptions;
+    const options =
+      this.reflector.getAllAndOverride<ThrottleOptions>(THROTTLE_OPTIONS_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]) ?? this.defaultOptions;
 
     const request = context.switchToHttp().getRequest<{
       ip?: string;
@@ -53,8 +54,7 @@ export class ThrottleGuard implements CanActivate {
       originalUrl?: string;
       user?: { id?: string };
     }>();
-    const identity =
-      request.user?.id || request.ip || 'anonymous';
+    const identity = request.user?.id || request.ip || 'anonymous';
     const path = request.route?.path || request.originalUrl || 'unknown';
     const key = `throttle:${options.keyPrefix || 'route'}:${identity}:${path}`;
 
