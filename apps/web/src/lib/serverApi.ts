@@ -16,6 +16,49 @@ type ServerFetchError = Error & {
   status?: number;
 };
 
+async function readResponsePayload(response: Response) {
+  try {
+    return await response.json();
+  } catch {
+    try {
+      return await response.text();
+    } catch {
+      return null;
+    }
+  }
+}
+
+async function refreshServerAccessToken(cookieHeader: string) {
+  if (!cookieHeader) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/auth/refresh`, {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        Cookie: cookieHeader,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = await readResponsePayload(response);
+    if (!isApiResponse(payload) || !isSuccessCode(payload.code)) {
+      return null;
+    }
+
+    const data = payload.data as { accessToken?: unknown };
+    return typeof data.accessToken === "string" ? data.accessToken : null;
+  } catch {
+    return null;
+  }
+}
+
 async function captureServerFetchError(
   error: unknown,
   path: string,
@@ -91,24 +134,31 @@ export async function serverFetch<T>(
       signal: controller.signal,
     });
 
-    let payload: unknown = null;
-    try {
-      payload = await res.json();
-    } catch {
-      try {
-        payload = await res.text();
-      } catch {
-        payload = null;
+    let response = res;
+    let payload = await readResponsePayload(response);
+
+    if (!response.ok && response.status === 401) {
+      const accessToken = await refreshServerAccessToken(cookieHeader);
+      if (accessToken) {
+        const retryHeaders = new Headers(headers);
+        retryHeaders.set("Authorization", `Bearer ${accessToken}`);
+        response = await fetch(`${API_BASE}${path}`, {
+          ...options,
+          cache: "no-store",
+          headers: retryHeaders,
+          signal: controller.signal,
+        });
+        payload = await readResponsePayload(response);
       }
     }
 
-    if (!res.ok) {
+    if (!response.ok) {
       throw createRequestError(
         typeof payload === "string"
           ? payload
           : (payload as ApiErrorPayload | null),
-        `Request failed: ${res.status}`,
-        res.status,
+        `Request failed: ${response.status}`,
+        response.status,
       );
     }
 
@@ -116,7 +166,7 @@ export async function serverFetch<T>(
       throw createRequestError(
         null,
         "接口响应格式异常，请稍后再试。",
-        res.status,
+        response.status,
       );
     }
 

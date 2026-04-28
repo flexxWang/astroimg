@@ -10,6 +10,7 @@ type JwtPayload = {
   username: string;
   email: string;
   jti?: string;
+  type?: 'access' | 'refresh';
 };
 
 @Injectable()
@@ -30,7 +31,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
-    if (!payload.jti || (await this.authService.isTokenRevoked(payload.jti))) {
+    if (
+      payload.type === 'refresh' ||
+      !payload.jti ||
+      (await this.authService.isTokenRevoked(payload.jti))
+    ) {
       throw new UnauthorizedException();
     }
 

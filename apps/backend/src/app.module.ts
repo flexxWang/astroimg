@@ -7,7 +7,7 @@ import {
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { CacheModule } from '@nestjs/cache-manager';
-import { redisStore } from 'cache-manager-redis-yet';
+import { createKeyv } from '@keyv/redis';
 import { APP_GUARD } from '@nestjs/core';
 import databaseConfig from './config/database.config';
 import redisConfig from './config/redis.config';
@@ -54,14 +54,18 @@ import { HealthModule } from './modules/health/health.module';
     CacheModule.registerAsync({
       isGlobal: true,
       inject: [ConfigService],
-      useFactory: async (configService: ConfigService) => {
+      useFactory: (configService: ConfigService) => {
         const redis = configService.getOrThrow<{
           host: string;
           port: number;
           password?: string;
           db: number;
         }>('redis');
-        const options: Parameters<typeof redisStore>[0] = {
+        const options: {
+          socket: { host: string; port: number };
+          database: number;
+          password?: string;
+        } = {
           socket: { host: redis.host, port: redis.port },
           database: redis.db,
         };
@@ -69,7 +73,11 @@ import { HealthModule } from './modules/health/health.module';
           options.password = redis.password;
         }
         return {
-          store: await redisStore(options),
+          stores: [
+            createKeyv(options, {
+              namespace: undefined,
+            }),
+          ],
         };
       },
     }),

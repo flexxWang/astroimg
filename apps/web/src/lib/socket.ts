@@ -1,6 +1,8 @@
 import { io, Socket } from "socket.io-client";
+import { ensureFreshSession } from "@/lib/apiClient";
 
 let socket: Socket | null = null;
+let reconnectAfterRefresh: Promise<boolean> | null = null;
 
 const SOCKET_BASE =
   process.env.NEXT_PUBLIC_SOCKET_BASE ||
@@ -12,6 +14,32 @@ export function getSocket() {
   socket = io(SOCKET_BASE, {
     withCredentials: true,
   });
+
+  const refreshAndReconnect = () => {
+    if (!socket || socket.connected) {
+      return;
+    }
+
+    if (!reconnectAfterRefresh) {
+      reconnectAfterRefresh = ensureFreshSession().finally(() => {
+        reconnectAfterRefresh = null;
+      });
+    }
+
+    void reconnectAfterRefresh.then((refreshed) => {
+      if (refreshed && socket && !socket.connected) {
+        socket.connect();
+      }
+    });
+  };
+
+  socket.on("connect_error", refreshAndReconnect);
+  socket.on("disconnect", (reason) => {
+    if (reason === "io server disconnect") {
+      refreshAndReconnect();
+    }
+  });
+
   if (process.env.NODE_ENV === "development") {
     socket.on("connect", () => {
       // eslint-disable-next-line no-console
@@ -32,4 +60,5 @@ export function getSocket() {
 export function disconnectSocket() {
   if (!socket) return;
   socket.disconnect();
+  socket = null;
 }

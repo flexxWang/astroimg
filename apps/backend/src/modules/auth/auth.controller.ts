@@ -7,6 +7,33 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 
+const DURATION_PATTERN = /^(\d+)(ms|s|m|h|d)$/;
+
+function durationToMs(value: string, fallbackMs: number) {
+  const normalized = value.trim().toLowerCase();
+  const numeric = Number(normalized);
+  if (Number.isFinite(numeric)) {
+    return numeric * 1000;
+  }
+
+  const match = normalized.match(DURATION_PATTERN);
+  if (!match) {
+    return fallbackMs;
+  }
+
+  const amount = Number(match[1]);
+  const unit = match[2];
+  const multiplier: Record<string, number> = {
+    ms: 1,
+    s: 1000,
+    m: 60 * 1000,
+    h: 60 * 60 * 1000,
+    d: 24 * 60 * 60 * 1000,
+  };
+
+  return amount * multiplier[unit];
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -14,7 +41,12 @@ export class AuthController {
     private readonly configService: ConfigService,
   ) {}
 
-  private buildCookieOptions() {
+  private buildCookieOptions(kind: 'access' | 'refresh') {
+    const expiresIn =
+      kind === 'access'
+        ? this.configService.get<string>('jwt.accessExpiresIn') || '1h'
+        : this.configService.get<string>('jwt.refreshExpiresIn') || '30d';
+
     return {
       httpOnly: true,
       sameSite: this.configService.get<'lax' | 'strict' | 'none'>(
@@ -22,17 +54,20 @@ export class AuthController {
       ),
       secure: this.configService.get<boolean>('app.cookie.secure') ?? false,
       domain: this.configService.get<string | undefined>('app.cookie.domain'),
-      maxAge: this.configService.get<number>('app.cookie.maxAge'),
+      maxAge: durationToMs(
+        expiresIn,
+        kind === 'access' ? 60 * 60 * 1000 : 30 * 24 * 60 * 60 * 1000,
+      ),
     };
   }
 
   private buildClearCookieOptions() {
-    const { maxAge, ...options } = this.buildCookieOptions();
+    const { maxAge, ...options } = this.buildCookieOptions('access');
     void maxAge;
     return options;
   }
 
-  private extractToken(req: RequestWithContext) {
+  private extractAccessToken(req: RequestWithContext) {
     const cookieToken = req.cookies?.access_token;
     if (cookieToken) {
       return cookieToken;
@@ -47,6 +82,26 @@ export class AuthController {
     return scheme?.toLowerCase() === 'bearer' ? token : undefined;
   }
 
+  private extractRefreshToken(req: RequestWithContext) {
+    return req.cookies?.refresh_token;
+  }
+
+  private setAuthCookies(
+    res: Response,
+    result: Awaited<ReturnType<AuthService['login']>>,
+  ) {
+    res.cookie(
+      'access_token',
+      result.accessToken,
+      this.buildCookieOptions('access'),
+    );
+    res.cookie(
+      'refresh_token',
+      result.refreshToken,
+      this.buildCookieOptions('refresh'),
+    );
+  }
+
   @Throttle({ limit: 10, ttl: 60 * 10, keyPrefix: 'auth-register' })
   @Post('register')
   async register(
@@ -54,7 +109,7 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.register(dto);
-    res.cookie('access_token', result.accessToken, this.buildCookieOptions());
+    this.setAuthCookies(res, result);
     return result;
   }
 
@@ -65,7 +120,20 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.authService.login(dto);
-    res.cookie('access_token', result.accessToken, this.buildCookieOptions());
+    this.setAuthCookies(res, result);
+    return result;
+  }
+
+  @Throttle({ limit: 30, ttl: 60 * 10, keyPrefix: 'auth-refresh' })
+  @Post('refresh')
+  async refresh(
+    @Req() req: RequestWithContext,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.refresh(
+      this.extractRefreshToken(req),
+    );
+    this.setAuthCookies(res, result);
     return result;
   }
 
@@ -74,8 +142,10 @@ export class AuthController {
     @Req() req: RequestWithContext,
     @Res({ passthrough: true }) res: Response,
   ) {
-    await this.authService.revokeAccessToken(this.extractToken(req));
+    await this.authService.revokeAccessToken(this.extractAccessToken(req));
+    await this.authService.revokeRefreshToken(this.extractRefreshToken(req));
     res.clearCookie('access_token', this.buildClearCookieOptions());
+    res.clearCookie('refresh_token', this.buildClearCookieOptions());
     return null;
   }
 }

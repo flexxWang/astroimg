@@ -21,9 +21,13 @@ interface ApiOptions extends Omit<RequestInit, "body"> {
   body?: BodyInit | JsonLike;
   timeout?: number;
   errorToast?: false | ShowApiErrorToastOptions;
+  authRefresh?: false;
+  authRedirect?: false;
 }
 
 export type ApiError = RequestError;
+
+let refreshPromise: Promise<boolean> | null = null;
 
 function isBodyLike(value: unknown) {
   return (
@@ -57,8 +61,112 @@ function showGlobalErrorToast(
   showApiErrorToast(error, errorToast ?? {});
 }
 
+async function readResponsePayload(response: Response) {
+  try {
+    return await response.json();
+  } catch {
+    try {
+      return await response.text();
+    } catch {
+      return null;
+    }
+  }
+}
+
+async function refreshAccessToken() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  if (!refreshPromise) {
+    refreshPromise = fetch(`${API_BASE}/auth/refresh`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          return false;
+        }
+
+        const payload = await readResponsePayload(response);
+        return isApiResponse(payload) && isSuccessCode(payload.code);
+      })
+      .catch(() => false)
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+
+  return refreshPromise;
+}
+
+function redirectToLogin() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const currentPath = window.location.pathname + window.location.search;
+  if (!window.location.pathname.startsWith("/login")) {
+    const next = encodeURIComponent(currentPath);
+    window.location.href = `/login?next=${next}`;
+  }
+}
+
+async function request<T>(
+  path: string,
+  requestOptions: Omit<ApiOptions, "timeout" | "errorToast" | "authRefresh">,
+  body: BodyInit | undefined,
+  headers: Headers,
+  signal: AbortSignal,
+) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...requestOptions,
+    body,
+    headers,
+    credentials: "include",
+    signal,
+  });
+
+  const payload = await readResponsePayload(response);
+
+  if (!response.ok) {
+    const normalizedPayload =
+      typeof payload === "string"
+        ? payload
+        : (payload as ApiErrorPayload | null);
+    throw createRequestError(
+      normalizedPayload,
+      "Request failed",
+      response.status,
+    );
+  }
+
+  if (!isApiResponse(payload)) {
+    throw createRequestError(
+      null,
+      "接口响应格式异常，请稍后再试。",
+      response.status,
+    );
+  }
+
+  if (!isSuccessCode(payload.code)) {
+    throw createRequestError(payload, "Request failed", payload.code);
+  }
+
+  return payload as ApiResponse<T>;
+}
+
 export async function apiFetch<T>(path: string, options: ApiOptions = {}) {
-  const { timeout = 15000, ...requestOptions } = options;
+  const {
+    timeout = 15000,
+    errorToast,
+    authRefresh = true,
+    authRedirect = true,
+    ...requestOptions
+  } = options;
   const headers = new Headers(requestOptions.headers);
 
   let body: BodyInit | undefined;
@@ -90,64 +198,47 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}) {
   }
 
   try {
-    const response = await fetch(`${API_BASE}${path}`, {
-      ...requestOptions,
-      body,
-      headers,
-      credentials: "include",
-      signal: controller.signal,
-    });
-
-    let payload: unknown = null;
     try {
-      payload = await response.json();
-    } catch {
-      try {
-        payload = await response.text();
-      } catch {
-        payload = null;
-      }
-    }
-
-    if (!response.ok) {
-      const normalizedPayload =
-        typeof payload === "string"
-          ? payload
-          : (payload as ApiErrorPayload | null);
-      const error = createRequestError(
-        normalizedPayload,
-        "Request failed",
-        response.status,
+      return await request<T>(
+        path,
+        requestOptions,
+        body,
+        headers,
+        controller.signal,
       );
-      if (response.status === 401 && typeof window !== "undefined") {
-        const currentPath = window.location.pathname + window.location.search;
-        if (!window.location.pathname.startsWith("/login")) {
-          const next = encodeURIComponent(currentPath);
-          window.location.href = `/login?next=${next}`;
-        }
+    } catch (err) {
+      const error = err as ApiError;
+      const canRefresh =
+        authRefresh !== false &&
+        error.status === 401 &&
+        typeof window !== "undefined" &&
+        path !== "/auth/refresh" &&
+        path !== "/auth/login" &&
+        path !== "/auth/register" &&
+        path !== "/auth/logout";
+
+      if (canRefresh && (await refreshAccessToken())) {
+        return await request<T>(
+          path,
+          requestOptions,
+          body,
+          headers,
+          controller.signal,
+        );
       }
+
+      if (canRefresh && authRedirect !== false) {
+        redirectToLogin();
+      }
+
       throw error;
     }
-
-    if (!isApiResponse(payload)) {
-      throw createRequestError(
-        null,
-        "接口响应格式异常，请稍后再试。",
-        response.status,
-      );
-    }
-
-    if (!isSuccessCode(payload.code)) {
-      throw createRequestError(payload, "Request failed", payload.code);
-    }
-
-    return payload as ApiResponse<T>;
   } catch (err) {
     if ((err as Error).name === "AbortError") {
       const error: ApiError = new Error("请求超时");
       error.status = 408;
       error.errorCode = ErrorCode.REQUEST_TIMEOUT;
-      showGlobalErrorToast(error, options.errorToast);
+      showGlobalErrorToast(error, errorToast);
       throw error;
     }
 
@@ -167,13 +258,17 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}) {
         "网络异常，请稍后再试。",
       );
       normalizedError.errorCode = ErrorCode.NETWORK_ERROR;
-      showGlobalErrorToast(normalizedError, options.errorToast);
+      showGlobalErrorToast(normalizedError, errorToast);
       throw normalizedError;
     }
 
-    showGlobalErrorToast(error, options.errorToast);
+    showGlobalErrorToast(error, errorToast);
     throw error;
   } finally {
     clearTimer(timer);
   }
+}
+
+export async function ensureFreshSession() {
+  return refreshAccessToken();
 }

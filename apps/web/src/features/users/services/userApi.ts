@@ -1,11 +1,16 @@
 import { apiFetch } from "@/lib/apiClient";
 
+type AuthTokens = {
+  accessToken: string;
+  refreshToken: string;
+};
+
 export function register(payload: {
   username: string;
   email: string;
   password: string;
 }) {
-  return apiFetch<{ accessToken: string }>("/auth/register", {
+  return apiFetch<AuthTokens>("/auth/register", {
     method: "POST",
     body: JSON.stringify(payload),
     errorToast: {
@@ -16,7 +21,7 @@ export function register(payload: {
 }
 
 export function login(payload: { usernameOrEmail: string; password: string }) {
-  return apiFetch<{ accessToken: string }>("/auth/login", {
+  return apiFetch<AuthTokens>("/auth/login", {
     method: "POST",
     body: JSON.stringify(payload),
     errorToast: {
@@ -29,5 +34,6 @@ export function login(payload: { usernameOrEmail: string; password: string }) {
 export function fetchMe(options?: { errorToast?: false }) {
   return apiFetch<{ id: string; username: string }>("/users/me", {
     errorToast: options?.errorToast,
+    authRedirect: false,
   });
 }

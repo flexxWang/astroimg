@@ -72,6 +72,9 @@ pnpm --filter @astroimg/backend migration:run
 
 - Configure `CORS_ALLOWED_ORIGINS` explicitly before production deployment.
 - Replace `JWT_SECRET` with a real secret before production deployment.
+- Keep `JWT_ACCESS_EXPIRES_IN` short, for example `15m` to `2h`.
+- Use `JWT_REFRESH_EXPIRES_IN` for refresh-token session length; refresh
+  tokens are rotated and stored server-side for logout/revocation.
 - Set `COOKIE_SECURE=true` behind HTTPS.
 - Keep real production secrets in the deployment platform secret manager; use
   `apps/backend/env.production.example` as the committed template only.

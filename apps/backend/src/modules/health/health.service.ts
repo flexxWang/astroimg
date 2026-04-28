@@ -12,6 +12,37 @@ type DependencyStatus = {
   error?: string;
 };
 
+type CacheClient = {
+  isReady?: boolean;
+};
+
+type CacheStoreClient = {
+  getClient: () => Promise<CacheClient>;
+};
+
+type CacheKeyvStore = {
+  store: CacheStoreClient;
+};
+
+type CacheManagerWithStores = Cache & {
+  stores?: unknown[];
+  ttl?: (key: string) => Promise<number>;
+  del?: (key: string) => Promise<void> | void;
+};
+
+function isCacheKeyvStore(value: unknown): value is CacheKeyvStore {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const store = (value as { store?: unknown }).store;
+  if (!store || typeof store !== 'object') {
+    return false;
+  }
+
+  return typeof (store as { getClient?: unknown }).getClient === 'function';
+}
+
 @Injectable()
 export class HealthService {
   constructor(
@@ -84,12 +115,45 @@ export class HealthService {
   }
 
   private async checkCache() {
+    const cache = this.cacheManager as CacheManagerWithStores;
+    const primaryStore = cache.stores?.[0];
+
+    if (!isCacheKeyvStore(primaryStore)) {
+      throw new Error('cache is not backed by a redis adapter');
+    }
+
+    const redisClient = await primaryStore.store.getClient();
+
+    if (!redisClient) {
+      throw new Error('cache is not backed by a redis adapter');
+    }
+
+    if (redisClient.isReady === false) {
+      throw new Error('redis cache client is not ready');
+    }
+
     const key = `health:${Date.now()}`;
-    await this.cacheManager.set(key, 'ok', 5_000);
-    const value = await this.cacheManager.get<string>(key);
+    await cache.set(key, 'ok', 5_000);
+    const value = await cache.get<string>(key);
     if (value !== 'ok') {
       throw new Error('cache roundtrip failed');
     }
+
+    const ttlMs = await cache.ttl?.(key);
+    if (typeof ttlMs !== 'number' || ttlMs <= 0 || ttlMs > 5_000) {
+      throw new Error('cache ttl check failed');
+    }
+
+    await cache.del?.(key);
+    const deletedValue = await cache.get<string>(key);
+    if (deletedValue !== undefined) {
+      throw new Error('cache delete check failed');
+    }
+
+    return {
+      ttlMs,
+      clientReady: redisClient.isReady ?? true,
+    };
   }
 
   private async checkStorage() {
