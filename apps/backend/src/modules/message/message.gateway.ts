@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PresenceService } from './presence.service';
 import { AppException, ErrorCode } from '@/common/exceptions';
+import { AppLogger } from '@/common/logging/app-logger.service';
 
 type MessageGatewayJwtPayload = {
   sub: string;
@@ -34,6 +35,7 @@ export class MessageGateway
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly presenceService: PresenceService,
+    private readonly logger: AppLogger,
   ) {}
 
   async handleConnection(client: Socket) {
@@ -41,6 +43,10 @@ export class MessageGateway
       const cookie = client.handshake.headers.cookie || '';
       const token = this.extractToken(cookie);
       if (!token) {
+        this.logger.warn('message.socket.missing_token', {
+          socketId: client.id,
+          origin: client.handshake.headers.origin,
+        });
         client.disconnect();
         return;
       }
@@ -51,13 +57,21 @@ export class MessageGateway
       (client.data as MessageSocketData).userId = userId;
       void client.join(this.presenceService.roomForUser(userId));
       const state = await this.presenceService.addConnection(userId, client.id);
+      this.logger.event('message.socket.connected', {
+        socketId: client.id,
+        userId,
+      });
       if (state.changed) {
         void this.server.emit('presence:update', {
           userId,
           online: true,
         });
       }
-    } catch {
+    } catch (error) {
+      this.logger.error('message.socket.connection_failed', error, {
+        socketId: client.id,
+        origin: client.handshake.headers.origin,
+      });
       void client.disconnect();
     }
   }
@@ -75,6 +89,10 @@ export class MessageGateway
         online: false,
       });
     }
+    this.logger.event('message.socket.disconnected', {
+      socketId: client.id,
+      userId,
+    });
   }
 
   emitToUser(userId: string, event: string, payload: unknown) {

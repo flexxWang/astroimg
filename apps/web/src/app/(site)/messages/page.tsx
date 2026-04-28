@@ -4,11 +4,14 @@ import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
+  type ConversationItem,
+  type MessageItem,
   fetchConversations,
   markConversationRead,
   searchMessages,
   sendMessage,
 } from "@/features/messages/services/messageApi";
+import type { ApiResponse } from "@/lib/apiResponse";
 import { searchUsers } from "@/features/users/services/userSearchApi";
 import { useUserStore } from "@/stores/userStore";
 import { getSocket } from "@/lib/socket";
@@ -16,6 +19,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useInfiniteMessages } from "@/features/messages/hooks/useInfiniteMessages";
+
+type PresenceUpdate = {
+  userId: string;
+  online: boolean;
+};
 
 export default function MessagesPage() {
   return (
@@ -61,8 +69,13 @@ function MessagesPageContent() {
     }
   }, [hydrated, router, user]);
 
+  const conversationsQueryKey = useMemo(
+    () => ["conversations", user?.id] as const,
+    [user?.id],
+  );
+
   const { data: convData, refetch: refetchConversations } = useQuery({
-    queryKey: ["conversations"],
+    queryKey: conversationsQueryKey,
     queryFn: () => fetchConversations(),
     enabled: Boolean(user),
   });
@@ -98,32 +111,101 @@ function MessagesPageContent() {
   useEffect(() => {
     if (!user) return;
     const socket = getSocket();
-    const handler = () => {
+    const refreshHandler = () => {
       refetchConversations();
-      if (selectedConversationId) {
+    };
+    const presenceHandler = (payload: PresenceUpdate) => {
+      queryClient.setQueryData<ApiResponse<ConversationItem[]> | undefined>(
+        conversationsQueryKey,
+        (current) => {
+          if (!current?.data) return current;
+          return {
+            ...current,
+            data: current.data.map((conversation) =>
+              conversation.otherUserId === payload.userId
+                ? { ...conversation, online: payload.online }
+                : conversation,
+            ),
+          };
+        },
+      );
+    };
+    const clearConversationUnread = (conversationId: string) => {
+      queryClient.setQueryData<ApiResponse<ConversationItem[]> | undefined>(
+        conversationsQueryKey,
+        (current) => {
+          if (!current?.data) return current;
+          return {
+            ...current,
+            data: current.data.map((conversation) =>
+              conversation.id === conversationId
+                ? { ...conversation, unreadCount: 0 }
+                : conversation,
+            ),
+          };
+        },
+      );
+    };
+    const handler = (message: MessageItem) => {
+      if (message.senderId === user.id) {
+        return;
+      }
+
+      refetchConversations();
+      if (selectedConversationId === message.conversationId) {
         reload();
-        markConversationRead(selectedConversationId).catch(() => {});
+        markConversationRead(selectedConversationId)
+          .then(() => clearConversationUnread(selectedConversationId))
+          .catch(() => {});
       }
     };
-    const readHandler = () => {
-      refetchConversations();
+    const readHandler = (payload: { conversationId?: string }) => {
+      if (payload.conversationId) {
+        clearConversationUnread(payload.conversationId);
+      }
     };
+    socket.on("connect", refreshHandler);
     socket.on("message:new", handler);
     socket.on("conversation:read", readHandler);
+    socket.on("presence:update", presenceHandler);
     return () => {
+      socket.off("connect", refreshHandler);
       socket.off("message:new", handler);
       socket.off("conversation:read", readHandler);
+      socket.off("presence:update", presenceHandler);
     };
-  }, [refetchConversations, reload, selectedConversationId, user]);
+  }, [
+    conversationsQueryKey,
+    queryClient,
+    refetchConversations,
+    reload,
+    selectedConversationId,
+    user,
+  ]);
 
   const messagesList = messages;
 
   useEffect(() => {
     if (!selectedConversationId || !user) return;
     markConversationRead(selectedConversationId)
-      .then(() => refetchConversations())
+      .then(() => {
+        queryClient.setQueryData<ApiResponse<ConversationItem[]> | undefined>(
+          conversationsQueryKey,
+          (current) => {
+            if (!current?.data) return current;
+            return {
+              ...current,
+              data: current.data.map((conversation) =>
+                conversation.id === selectedConversationId
+                  ? { ...conversation, unreadCount: 0 }
+                  : conversation,
+              ),
+            };
+          },
+        );
+      })
       .catch(() => {});
-  }, [refetchConversations, selectedConversationId, user]);
+  }, [conversationsQueryKey, queryClient, selectedConversationId, user]);
 
   useEffect(() => {
     if (debouncedMessageSearch.length > 0) return;
@@ -182,7 +264,7 @@ function MessagesPageContent() {
       }
       appendMessage(result.data);
       scrollToBottom();
-      queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
     } catch {}
   };
 

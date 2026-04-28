@@ -13,6 +13,11 @@ export class UploadController {
   @Throttle({ limit: 30, ttl: 60 * 5, keyPrefix: 'upload-sign' })
   @Post('sign')
   signUpload(@Body() dto: SignUploadDto, @CurrentUser() user: { id: string }) {
-    return this.uploadService.signUpload(user.id, dto.filename);
+    return this.uploadService.signUpload(
+      user.id,
+      dto.filename,
+      dto.contentType,
+      dto.fileSize,
+    );
   }
 }

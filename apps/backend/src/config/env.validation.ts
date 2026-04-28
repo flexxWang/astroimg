@@ -120,6 +120,23 @@ export function validateEnv(env: Record<string, unknown>) {
       'MINIO_PUBLIC_URL',
       'http://127.0.0.1:9000',
     ),
+    UPLOAD_ALLOWED_CONTENT_TYPES: readString(
+      env,
+      'UPLOAD_ALLOWED_CONTENT_TYPES',
+      'image/jpeg,image/png,image/webp,image/gif,image/tiff,application/fits,application/x-fits',
+    ),
+    UPLOAD_MAX_BYTES: readNumber(env, 'UPLOAD_MAX_BYTES', 50 * 1024 * 1024, {
+      min: 1,
+    }),
+    UPLOAD_PRESIGN_TTL_SECONDS: readNumber(
+      env,
+      'UPLOAD_PRESIGN_TTL_SECONDS',
+      600,
+      {
+        min: 60,
+        max: 3600,
+      },
+    ),
     AI_PROVIDER: readString(env, 'AI_PROVIDER', 'openrouter').toLowerCase(),
     OPENAI_API_KEY:
       typeof env.OPENAI_API_KEY === 'string' ? env.OPENAI_API_KEY.trim() : '',

@@ -73,6 +73,11 @@ pnpm --filter @astroimg/backend migration:run
 - Configure `CORS_ALLOWED_ORIGINS` explicitly before production deployment.
 - Replace `JWT_SECRET` with a real secret before production deployment.
 - Set `COOKIE_SECURE=true` behind HTTPS.
+- Keep real production secrets in the deployment platform secret manager; use
+  `apps/backend/env.production.example` as the committed template only.
+- Upload signing requires `contentType` and `fileSize`; tune
+  `UPLOAD_ALLOWED_CONTENT_TYPES`, `UPLOAD_MAX_BYTES`, and
+  `UPLOAD_PRESIGN_TTL_SECONDS` per environment.
 - Health endpoints:
   - `GET /health/live`
   - `GET /health/ready`
@@ -160,5 +165,5 @@ docker build -f apps/backend/Dockerfile -t astroimg-backend .
 Run it with your environment file:
 
 ```bash
-docker run --env-file apps/backend/.env -p 4000:4000 astroimg-backend
+docker run --env-file apps/backend/.env.production -p 4000:4000 astroimg-backend
 ```

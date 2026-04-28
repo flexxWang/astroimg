@@ -13,6 +13,7 @@ import { User } from '../user/user.entity';
 import { MessageGateway } from './message.gateway';
 import { PresenceService } from './presence.service';
 import { AppException, ErrorCode } from '@/common/exceptions';
+import { AppLogger } from '@/common/logging/app-logger.service';
 
 type UnreadCountRow = {
   conversationId: string;
@@ -31,6 +32,7 @@ export class MessageService {
     private readonly gateway: MessageGateway,
     private readonly presenceService: PresenceService,
     private readonly dataSource: DataSource,
+    private readonly logger: AppLogger,
   ) {}
 
   private ensureConversationAccess(
@@ -51,31 +53,23 @@ export class MessageService {
       order: { updatedAt: 'DESC' },
     });
 
+    if (conversations.length === 0) {
+      return [];
+    }
+
     const userIds = new Set<string>();
     conversations.forEach((c) => {
       userIds.add(c.userAId);
       userIds.add(c.userBId);
     });
 
-    const users = await this.userRepo.findBy({ id: In(Array.from(userIds)) });
-    const userMap = new Map(users.map((u) => [u.id, u.username]));
-
-    const unreadMap = new Map<string, number>();
-    if (conversations.length > 0) {
-      const ids = conversations.map((c) => c.id);
-      const unread = await this.messageRepo
-        .createQueryBuilder('m')
-        .select('m.conversation_id', 'conversationId')
-        .addSelect('COUNT(*)', 'count')
-        .where('m.conversation_id IN (:...ids)', { ids })
-        .andWhere('m.recipient_id = :userId', { userId })
-        .andWhere('m.read = false')
-        .groupBy('m.conversation_id')
-        .getRawMany<UnreadCountRow>();
-      unread.forEach((row) => {
-        unreadMap.set(row.conversationId, Number(row.count));
-      });
-    }
+    const [userMap, unreadMap] = await Promise.all([
+      this.loadConversationUsernames(Array.from(userIds)),
+      this.loadUnreadCounts(
+        conversations.map((conversation) => conversation.id),
+        userId,
+      ),
+    ]);
 
     return Promise.all(
       conversations.map(async (c) => {
@@ -87,10 +81,70 @@ export class MessageService {
           lastMessage: c.lastMessage || '',
           updatedAt: c.updatedAt,
           unreadCount: unreadMap.get(c.id) || 0,
-          online: await this.presenceService.isOnline(otherId),
+          online: await this.safeIsOnline(otherId),
         };
       }),
     );
+  }
+
+  private async loadConversationUsernames(userIds: string[]) {
+    try {
+      const users = await this.userRepo.findBy({ id: In(userIds) });
+      return new Map(users.map((user) => [user.id, user.username]));
+    } catch (error) {
+      this.logger.error(
+        'messages.list_conversations.user_lookup_failed',
+        error,
+        {
+          userIds,
+        },
+      );
+      return new Map<string, string>();
+    }
+  }
+
+  private async loadUnreadCounts(conversationIds: string[], userId: string) {
+    const unreadMap = new Map<string, number>();
+    if (conversationIds.length === 0) {
+      return unreadMap;
+    }
+
+    try {
+      const unread = await this.messageRepo
+        .createQueryBuilder('m')
+        .select('m.conversation_id', 'conversationId')
+        .addSelect('COUNT(*)', 'count')
+        .where('m.conversation_id IN (:...ids)', { ids: conversationIds })
+        .andWhere('m.recipient_id = :userId', { userId })
+        .andWhere('m.read = false')
+        .groupBy('m.conversation_id')
+        .getRawMany<UnreadCountRow>();
+      unread.forEach((row) => {
+        unreadMap.set(row.conversationId, Number(row.count));
+      });
+    } catch (error) {
+      this.logger.error(
+        'messages.list_conversations.unread_count_failed',
+        error,
+        {
+          conversationIds,
+          userId,
+        },
+      );
+    }
+
+    return unreadMap;
+  }
+
+  private async safeIsOnline(userId: string) {
+    try {
+      return await this.presenceService.isOnline(userId);
+    } catch (error) {
+      this.logger.error('messages.list_conversations.presence_failed', error, {
+        userId,
+      });
+      return false;
+    }
   }
 
   async listMessages(userId: string, conversationId: string, cursor?: string) {
@@ -144,6 +198,7 @@ export class MessageService {
         senderId,
         recipientId,
         content,
+        read: senderId === recipientId,
       });
 
       return manager.save(Message, message);

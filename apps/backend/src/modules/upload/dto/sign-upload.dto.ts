@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsInt, IsNotEmpty, IsString, MaxLength, Min } from 'class-validator';
 
 export class SignUploadDto {
   @IsString()
@@ -7,7 +7,11 @@ export class SignUploadDto {
   filename: string;
 
   @IsString()
-  @IsOptional()
+  @IsNotEmpty()
   @MaxLength(100)
-  contentType?: string;
+  contentType: string;
+
+  @IsInt()
+  @Min(1)
+  fileSize: number;
 }

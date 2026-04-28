@@ -6,6 +6,7 @@ import { Conversation } from './conversation.entity';
 import { User } from '../user/user.entity';
 import { MessageGateway } from './message.gateway';
 import { PresenceService } from './presence.service';
+import { AppLogger } from '@/common/logging/app-logger.service';
 
 type MockGateway = {
   emitToUser: jest.Mock<void, [string, string, unknown]>;
@@ -20,6 +21,15 @@ type MockDataSource = {
 
 describe('MessageService', () => {
   const createService = () => {
+    const messageRepo = {
+      createQueryBuilder: jest.fn(),
+    } as unknown as Repository<Message>;
+    const conversationRepo = {
+      find: jest.fn(),
+    } as unknown as Repository<Conversation>;
+    const userRepo = {
+      findBy: jest.fn(),
+    } as unknown as Repository<User>;
     const gateway: MockGateway = {
       emitToUser: jest.fn<void, [string, string, unknown]>(),
     };
@@ -32,22 +42,47 @@ describe('MessageService', () => {
         [(manager: object) => Promise<unknown>]
       >(),
     };
+    const logger = {
+      error: jest.fn(),
+    } as unknown as AppLogger;
 
     const service = new MessageService(
-      {} as Repository<Message>,
-      {} as Repository<Conversation>,
-      {} as Repository<User>,
+      messageRepo,
+      conversationRepo,
+      userRepo,
       gateway as unknown as MessageGateway,
       presenceService,
       dataSource as unknown as DataSource,
+      logger,
     );
 
     return {
       service,
+      messageRepo,
+      conversationRepo,
+      userRepo,
+      presenceService,
       gateway,
       dataSource,
+      logger,
     };
   };
+
+  it('returns an empty array when the user has no conversations', async () => {
+    const { service, conversationRepo, userRepo, presenceService } =
+      createService();
+    const mockUserRepo = userRepo as unknown as { findBy: jest.Mock };
+    const mockPresenceService = presenceService as unknown as {
+      isOnline: jest.Mock;
+    };
+    (conversationRepo.find as jest.Mock).mockResolvedValue([]);
+
+    const result = await service.listConversations('user-a');
+
+    expect(result).toEqual([]);
+    expect(mockUserRepo.findBy).not.toHaveBeenCalled();
+    expect(mockPresenceService.isOnline).not.toHaveBeenCalled();
+  });
 
   it('sends a message inside a transaction and emits to both participants', async () => {
     const { service, gateway, dataSource } = createService();
@@ -79,6 +114,7 @@ describe('MessageService', () => {
       senderId: 'user-a',
       recipientId: 'user-b',
       content: 'hello',
+      read: false,
     });
     expect(gateway.emitToUser).toHaveBeenCalledWith(
       'user-b',
@@ -90,6 +126,94 @@ describe('MessageService', () => {
       'message:new',
       result,
     );
+  });
+
+  it('marks self-sent messages as read immediately', async () => {
+    const { service, dataSource } = createService();
+
+    dataSource.transaction.mockImplementation(async (handler) => {
+      const manager = {
+        findOne: jest.fn().mockResolvedValue({
+          id: 'conversation-1',
+          userAId: 'user-a',
+          userBId: 'user-a',
+          lastMessage: 'previous',
+        }),
+        save: jest
+          .fn()
+          .mockImplementation((_entity: unknown, value: unknown) =>
+            Promise.resolve(value),
+          ),
+        create: jest
+          .fn()
+          .mockImplementation((_entity: unknown, value: unknown) => value),
+      };
+
+      return handler(manager);
+    });
+
+    const result = await service.sendMessage(
+      'user-a',
+      'user-a',
+      'note to self',
+    );
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        senderId: 'user-a',
+        recipientId: 'user-a',
+        read: true,
+      }),
+    );
+  });
+
+  it('degrades auxiliary failures when listing conversations', async () => {
+    const {
+      service,
+      conversationRepo,
+      userRepo,
+      presenceService,
+      messageRepo,
+    } = createService();
+    const qb = {
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      getRawMany: jest
+        .fn()
+        .mockRejectedValue(new Error('messages unavailable')),
+    };
+
+    (conversationRepo.find as jest.Mock).mockResolvedValue([
+      {
+        id: 'conversation-1',
+        userAId: 'user-a',
+        userBId: 'user-b',
+        lastMessage: 'hello',
+        updatedAt: new Date('2026-04-24T10:00:00.000Z'),
+      },
+    ]);
+    (userRepo.findBy as jest.Mock).mockRejectedValue(
+      new Error('users unavailable'),
+    );
+    (presenceService.isOnline as jest.Mock).mockRejectedValue(
+      new Error('presence unavailable'),
+    );
+    (messageRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
+
+    const result = await service.listConversations('user-a');
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        id: 'conversation-1',
+        otherUserId: 'user-b',
+        otherUsername: '用户',
+        unreadCount: 0,
+        online: false,
+      }),
+    ]);
   });
 
   it('recovers from a duplicate conversation insert by reloading the conversation', async () => {

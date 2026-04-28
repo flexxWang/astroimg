@@ -95,6 +95,7 @@ describe('Backend infrastructure smoke tests', () => {
             register: jest
               .fn()
               .mockResolvedValue({ accessToken: 'token-register' }),
+            revokeAccessToken: jest.fn().mockResolvedValue(undefined),
           },
         },
       ],
@@ -152,6 +153,34 @@ describe('Backend infrastructure smoke tests', () => {
     expect(cookie).toHaveBeenCalledWith(
       'access_token',
       'token-login',
+      expect.objectContaining({
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none',
+      }),
+    );
+  });
+
+  it('revokes the current token on logout and clears the cookie', async () => {
+    const clearCookie = jest.fn();
+    const res = {
+      clearCookie,
+    } as Pick<Response, 'clearCookie'> as Response;
+    const authService = moduleFixture.get<{
+      revokeAccessToken: jest.Mock;
+    }>(AuthService);
+
+    await authController.logout(
+      {
+        cookies: { access_token: 'token-cookie' },
+        get: jest.fn(),
+      } as unknown as Parameters<AuthController['logout']>[0],
+      res,
+    );
+
+    expect(authService.revokeAccessToken).toHaveBeenCalledWith('token-cookie');
+    expect(clearCookie).toHaveBeenCalledWith(
+      'access_token',
       expect.objectContaining({
         httpOnly: true,
         secure: true,

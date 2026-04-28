@@ -34,6 +34,12 @@ export class PresenceService implements OnModuleInit, OnModuleDestroy {
     });
 
     await this.redisClient.connect();
+    this.logger.event('presence.redis.connected', {
+      host,
+      port,
+      database,
+      auth: Boolean(password),
+    });
   }
 
   async onModuleDestroy() {

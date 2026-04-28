@@ -28,20 +28,21 @@ ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 WORKDIR /app
 
-COPY --from=prod-deps /app/node_modules ./node_modules
-COPY --from=prod-deps /app/apps/backend/node_modules ./apps/backend/node_modules
-COPY --from=build /app/apps/backend/dist ./apps/backend/dist
-COPY --from=build /app/apps/backend/package.json ./apps/backend/package.json
-COPY --from=build /app/apps/backend/nest-cli.json ./apps/backend/nest-cli.json
-COPY --from=build /app/apps/backend/tsconfig.build.json ./apps/backend/tsconfig.build.json
-COPY --from=build /app/apps/backend/src/migrations ./apps/backend/src/migrations
-COPY --from=build /app/apps/backend/src/data-source.ts ./apps/backend/src/data-source.ts
-COPY --from=build /app/apps/backend/src/config ./apps/backend/src/config
-COPY --from=build /app/packages/shared/dist ./packages/shared/dist
-COPY --from=build /app/packages/shared/package.json ./packages/shared/package.json
-COPY --from=build /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
-COPY --from=build /app/package.json ./package.json
+COPY --chown=node:node --from=prod-deps /app/node_modules ./node_modules
+COPY --chown=node:node --from=prod-deps /app/apps/backend/node_modules ./apps/backend/node_modules
+COPY --chown=node:node --from=build /app/apps/backend/dist ./apps/backend/dist
+COPY --chown=node:node --from=build /app/apps/backend/package.json ./apps/backend/package.json
+COPY --chown=node:node --from=build /app/apps/backend/nest-cli.json ./apps/backend/nest-cli.json
+COPY --chown=node:node --from=build /app/apps/backend/tsconfig.build.json ./apps/backend/tsconfig.build.json
+COPY --chown=node:node --from=build /app/apps/backend/src/migrations ./apps/backend/src/migrations
+COPY --chown=node:node --from=build /app/apps/backend/src/data-source.ts ./apps/backend/src/data-source.ts
+COPY --chown=node:node --from=build /app/apps/backend/src/config ./apps/backend/src/config
+COPY --chown=node:node --from=build /app/packages/shared/dist ./packages/shared/dist
+COPY --chown=node:node --from=build /app/packages/shared/package.json ./packages/shared/package.json
+COPY --chown=node:node --from=build /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
+COPY --chown=node:node --from=build /app/package.json ./package.json
 
 WORKDIR /app/apps/backend
+USER node
 EXPOSE 4000
 CMD ["node", "dist/main.js"]

@@ -11,6 +11,29 @@ function parseOrigins(value: string | undefined) {
     .filter(Boolean);
 }
 
+function parseContentTypes(value: string | undefined) {
+  const defaults = [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/gif',
+    'image/tiff',
+    'application/fits',
+    'application/x-fits',
+  ];
+
+  if (!value) {
+    return defaults;
+  }
+
+  const parsed = value
+    .split(',')
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+  return parsed.length > 0 ? parsed : defaults;
+}
+
 export default registerAs('app', () => {
   const nodeEnv = process.env.NODE_ENV || 'development';
   const trustProxy = process.env.TRUST_PROXY === 'true';
@@ -39,6 +62,13 @@ export default registerAs('app', () => {
       },
     },
     corsAllowedOrigins: parseOrigins(process.env.CORS_ALLOWED_ORIGINS),
+    upload: {
+      allowedContentTypes: parseContentTypes(
+        process.env.UPLOAD_ALLOWED_CONTENT_TYPES,
+      ),
+      maxBytes: Number(process.env.UPLOAD_MAX_BYTES || 50 * 1024 * 1024),
+      presignTtlSeconds: Number(process.env.UPLOAD_PRESIGN_TTL_SECONDS || 600),
+    },
     cookie: {
       domain: process.env.COOKIE_DOMAIN || undefined,
       secure: secureCookies,

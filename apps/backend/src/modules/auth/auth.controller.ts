@@ -1,7 +1,8 @@
-import { Body, Controller, Post, Res } from '@nestjs/common';
+import { Body, Controller, Post, Req, Res } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { Throttle } from '@/common/decorators/throttle.decorator';
+import type { RequestWithContext } from '@/common/http/request.types';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -23,6 +24,27 @@ export class AuthController {
       domain: this.configService.get<string | undefined>('app.cookie.domain'),
       maxAge: this.configService.get<number>('app.cookie.maxAge'),
     };
+  }
+
+  private buildClearCookieOptions() {
+    const { maxAge, ...options } = this.buildCookieOptions();
+    void maxAge;
+    return options;
+  }
+
+  private extractToken(req: RequestWithContext) {
+    const cookieToken = req.cookies?.access_token;
+    if (cookieToken) {
+      return cookieToken;
+    }
+
+    const authorization = req.get('authorization');
+    if (!authorization) {
+      return undefined;
+    }
+
+    const [scheme, token] = authorization.split(' ');
+    return scheme?.toLowerCase() === 'bearer' ? token : undefined;
   }
 
   @Throttle({ limit: 10, ttl: 60 * 10, keyPrefix: 'auth-register' })
@@ -48,8 +70,12 @@ export class AuthController {
   }
 
   @Post('logout')
-  logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie('access_token', this.buildCookieOptions());
+  async logout(
+    @Req() req: RequestWithContext,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    await this.authService.revokeAccessToken(this.extractToken(req));
+    res.clearCookie('access_token', this.buildClearCookieOptions());
     return null;
   }
 }

@@ -49,6 +49,9 @@ services:
       MINIO_BUCKET: ${MINIO_BUCKET:-astroimg}
       MINIO_USE_SSL: ${MINIO_USE_SSL:-false}
       MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-http://localhost:9000}
+      UPLOAD_ALLOWED_CONTENT_TYPES: ${BACKEND_UPLOAD_ALLOWED_CONTENT_TYPES:-image/jpeg,image/png,image/webp,image/gif,image/tiff,application/fits,application/x-fits}
+      UPLOAD_MAX_BYTES: ${BACKEND_UPLOAD_MAX_BYTES:-52428800}
+      UPLOAD_PRESIGN_TTL_SECONDS: ${BACKEND_UPLOAD_PRESIGN_TTL_SECONDS:-600}
       AI_PROVIDER: ${AI_PROVIDER:-openrouter}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}

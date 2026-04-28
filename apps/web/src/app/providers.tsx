@@ -6,6 +6,7 @@ import { ReactNode, useEffect, useState } from "react";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useUserStore } from "@/stores/userStore";
 import { fetchMe } from "@/features/users/services/userApi";
+import { disconnectSocket, getSocket } from "@/lib/socket";
 
 export default function Providers({ children }: { children: ReactNode }) {
   const hydrate = useUserStore((state) => state.hydrate);
@@ -23,7 +24,7 @@ export default function Providers({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    fetchMe()
+    fetchMe({ errorToast: false })
       .then((result) => setUser(result.data))
       .catch(() => setUser(null))
       .finally(() => hydrate());
@@ -35,11 +36,23 @@ export default function Providers({ children }: { children: ReactNode }) {
         id: user.id,
         username: user.username,
       });
-      return;
+
+      const socket = getSocket();
+      if (!socket.connected) {
+        socket.connect();
+      }
+
+      return () => {
+        disconnectSocket();
+      };
     }
 
+    client.removeQueries({ queryKey: ["conversations"] });
+    client.removeQueries({ queryKey: ["messages"] });
+    client.removeQueries({ queryKey: ["messages-search"] });
+    disconnectSocket();
     Sentry.setUser(null);
-  }, [user]);
+  }, [client, user]);
 
   return (
     <QueryClientProvider client={client}>

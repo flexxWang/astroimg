@@ -26,6 +26,8 @@ export function login(payload: { usernameOrEmail: string; password: string }) {
   });
 }
 
-export function fetchMe() {
-  return apiFetch<{ id: string; username: string }>("/users/me");
+export function fetchMe(options?: { errorToast?: false }) {
+  return apiFetch<{ id: string; username: string }>("/users/me", {
+    errorToast: options?.errorToast,
+  });
 }

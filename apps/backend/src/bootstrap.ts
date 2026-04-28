@@ -2,6 +2,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { INestApplication } from '@nestjs/common';
 import type { Express } from 'express';
+import helmet from 'helmet';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
@@ -31,6 +32,20 @@ export function configureApp(app: INestApplication) {
     const httpAdapter = app.getHttpAdapter().getInstance() as Express;
     httpAdapter.set('trust proxy', 1);
   }
+
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: false,
+      contentSecurityPolicy: false,
+      hsts: configService.get<boolean>('app.isProduction')
+        ? {
+            maxAge: 31_536_000,
+            includeSubDomains: true,
+            preload: true,
+          }
+        : false,
+    }),
+  );
 
   app.useGlobalPipes(
     new ValidationPipe({
