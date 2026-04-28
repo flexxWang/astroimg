@@ -25,7 +25,6 @@ type CacheKeyvStore = {
 };
 
 type CacheManagerWithStores = Cache & {
-  stores?: unknown[];
   ttl?: (key: string) => Promise<number>;
   del?: (key: string) => Promise<void> | void;
 };
@@ -115,14 +114,8 @@ export class HealthService {
   }
 
   private async checkCache() {
-    const cache = this.cacheManager as CacheManagerWithStores;
-    const primaryStore = cache.stores?.[0];
-
-    if (!isCacheKeyvStore(primaryStore)) {
-      throw new Error('cache is not backed by a redis adapter');
-    }
-
-    const redisClient = await primaryStore.store.getClient();
+    const cache = this.cacheManager as unknown as CacheManagerWithStores;
+    const redisClient = await this.getRedisCacheClient();
 
     if (!redisClient) {
       throw new Error('cache is not backed by a redis adapter');
@@ -154,6 +147,21 @@ export class HealthService {
       ttlMs,
       clientReady: redisClient.isReady ?? true,
     };
+  }
+
+  private getRedisCacheClient(): Promise<CacheClient | null> {
+    const stores = (
+      this.cacheManager as unknown as {
+        stores?: unknown[];
+      }
+    ).stores;
+    const primaryStore = stores?.[0];
+
+    if (!isCacheKeyvStore(primaryStore)) {
+      return Promise.resolve(null);
+    }
+
+    return primaryStore.store.getClient();
   }
 
   private async checkStorage() {

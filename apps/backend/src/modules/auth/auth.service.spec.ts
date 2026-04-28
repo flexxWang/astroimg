@@ -14,6 +14,12 @@ type RefreshPayload = {
   type: 'refresh';
 };
 
+type AppErrorLike = {
+  response?: {
+    errorCode?: string;
+  };
+};
+
 describe('AuthService refresh token rotation', () => {
   let authService: AuthService;
   let jwtService: JwtService;
@@ -103,11 +109,8 @@ describe('AuthService refresh token rotation', () => {
       await authService.refresh(firstPair.refreshToken);
       fail('Expected refresh token reuse to be rejected');
     } catch (error) {
-      expect(error).toMatchObject({
-        response: expect.objectContaining({
-          errorCode: ErrorCode.UNAUTHORIZED,
-        }),
-      });
+      const appError = error as AppErrorLike;
+      expect(appError.response?.errorCode).toBe(ErrorCode.UNAUTHORIZED);
     }
   });
 });
