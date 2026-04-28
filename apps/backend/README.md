@@ -60,6 +60,7 @@ Run the basic quality checks before pushing:
 ```bash
 pnpm --filter @astroimg/backend typecheck
 pnpm --filter @astroimg/backend lint
+pnpm --filter @astroimg/backend test
 ```
 
 If this is a fresh database, run migrations once:
@@ -85,6 +86,12 @@ pnpm --filter @astroimg/backend migration:run
   - `GET /health/live`
   - `GET /health/ready`
   - `GET /health`
+- Metrics endpoint:
+  - `GET /metrics`
+  - Prometheus text format
+  - Includes HTTP request count/latency, 5xx error count, dependency health
+    latency, auth failure count, upload sign failure count, and WebSocket
+    connection gauge.
 
 ## MinIO (local)
 
@@ -155,7 +162,11 @@ pnpm run migration:generate
 - New schema changes should be added through explicit migrations.
 - Environment variables are validated on startup.
 - Prefer editing `apps/backend/.env.local`, `apps/backend/.env.test`, or `apps/backend/.env.production` instead of a shared `.env`.
-- CI now validates backend `test`, `test:e2e` and `build` in GitHub Actions.
+- CI now validates backend `typecheck`, `lint`, `test`, `test:e2e`, and `build`
+  in GitHub Actions.
+- Feed and collaboration hot paths now have explicit DB indexes for post/work
+  listing, comment listing, follow counts, and draft listing. Run
+  `pnpm --filter @astroimg/backend migration:run` after pulling these changes.
 
 ## Docker image
 

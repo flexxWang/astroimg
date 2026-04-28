@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -9,6 +10,7 @@ import {
 import { Work } from '../work/work.entity';
 import { User } from '../user/user.entity';
 
+@Index('IDX_work_comments_work_created_at', ['workId', 'createdAt'])
 @Entity('work_comments')
 export class WorkComment {
   @PrimaryGeneratedColumn('uuid')

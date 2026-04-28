@@ -2,10 +2,13 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   Unique,
 } from 'typeorm';
 
+@Index('IDX_follows_follower_created_at', ['followerId', 'createdAt'])
+@Index('IDX_follows_following_created_at', ['followingId', 'createdAt'])
 @Entity('follows')
 @Unique(['followerId', 'followingId'])
 export class Follow {

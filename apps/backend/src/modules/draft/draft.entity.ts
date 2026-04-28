@@ -2,10 +2,12 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
+@Index('IDX_drafts_author_updated_at', ['authorId', 'updatedAt'])
 @Entity('drafts')
 export class Draft {
   @PrimaryGeneratedColumn('uuid')
