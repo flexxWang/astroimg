@@ -3,6 +3,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { ConfigService } from '@nestjs/config';
 import type { Cache } from 'cache-manager';
 import { DataSource } from 'typeorm';
+import { MetricsService } from '@/common/observability/metrics.service';
 import { UploadService } from '../upload/upload.service';
 
 type DependencyStatus = {
@@ -49,6 +50,7 @@ export class HealthService {
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     private readonly uploadService: UploadService,
     private readonly configService: ConfigService,
+    private readonly metricsService: MetricsService,
   ) {}
 
   live() {
@@ -63,9 +65,17 @@ export class HealthService {
     const timeoutMs =
       this.configService.get<number>('app.healthcheckTimeoutMs') ?? 1_500;
     const checks = {
-      database: await this.runCheck(() => this.checkDatabase(), timeoutMs),
-      cache: await this.runCheck(() => this.checkCache(), timeoutMs),
-      storage: await this.runCheck(() => this.checkStorage(), timeoutMs),
+      database: await this.runCheck(
+        'database',
+        () => this.checkDatabase(),
+        timeoutMs,
+      ),
+      cache: await this.runCheck('cache', () => this.checkCache(), timeoutMs),
+      storage: await this.runCheck(
+        'storage',
+        () => this.checkStorage(),
+        timeoutMs,
+      ),
     };
     const isReady = Object.values(checks).every((item) => item.status === 'up');
 
@@ -77,6 +87,7 @@ export class HealthService {
   }
 
   private async runCheck(
+    dependency: 'database' | 'cache' | 'storage',
     runner: () => Promise<Record<string, unknown> | void>,
     timeoutMs: number,
   ): Promise<DependencyStatus> {
@@ -91,17 +102,29 @@ export class HealthService {
         }),
       ]);
 
-      return {
+      const status: DependencyStatus = {
         status: 'up',
         latencyMs: Date.now() - startedAt,
         details: result ?? undefined,
       };
+      this.metricsService.recordDependencyHealth(
+        dependency,
+        status.latencyMs ?? 0,
+        status.status,
+      );
+      return status;
     } catch (error) {
-      return {
+      const status: DependencyStatus = {
         status: 'down',
         latencyMs: Date.now() - startedAt,
         error: error instanceof Error ? error.message : 'unknown error',
       };
+      this.metricsService.recordDependencyHealth(
+        dependency,
+        status.latencyMs ?? 0,
+        status.status,
+      );
+      return status;
     } finally {
       if (timeoutId) {
         clearTimeout(timeoutId);

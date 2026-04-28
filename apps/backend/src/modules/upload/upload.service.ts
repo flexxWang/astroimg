@@ -4,6 +4,7 @@ import { Client } from 'minio';
 import { randomUUID } from 'crypto';
 import path from 'path';
 import { AppException, ErrorCode } from '@/common/exceptions';
+import { MetricsService } from '@/common/observability/metrics.service';
 
 const CONTENT_TYPE_EXTENSIONS: Record<string, string[]> = {
   'image/jpeg': ['.jpg', '.jpeg'],
@@ -24,7 +25,10 @@ export class UploadService {
   private readonly maxUploadBytes: number;
   private readonly presignTtlSeconds: number;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly metricsService: MetricsService,
+  ) {
     const endpoint = this.configService.get<string>('MINIO_ENDPOINT') || '';
     const port = Number(this.configService.get<string>('MINIO_PORT') || 9000);
     const accessKey = this.configService.get<string>('MINIO_ACCESS_KEY') || '';
@@ -137,6 +141,7 @@ export class UploadService {
         expiresInSeconds: this.presignTtlSeconds,
       };
     } catch (error) {
+      this.metricsService.incrementCounter('upload_sign_failures_total');
       if (error instanceof AppException) {
         throw error;
       }

@@ -154,13 +154,14 @@ export class PostService {
   }
 
   async incrementLikeCount(postId: string) {
-    const post = await this.findEntityById(postId);
+    await this.postRepo.increment({ id: postId }, 'likeCount', 1);
+    const post = await this.postRepo.findOne({
+      where: { id: postId },
+      select: ['id', 'authorId', 'likeCount'],
+    });
     if (!post) {
       throw AppException.notFound(ErrorCode.POST_NOT_FOUND);
     }
-
-    post.likeCount = (post.likeCount || 0) + 1;
-    await this.postRepo.save(post);
     return {
       authorId: post.authorId,
       likeCount: post.likeCount,
@@ -168,13 +169,21 @@ export class PostService {
   }
 
   async decrementLikeCount(postId: string) {
-    const post = await this.findEntityById(postId);
+    await this.postRepo
+      .createQueryBuilder()
+      .update(Post)
+      .set({
+        likeCount: () => 'GREATEST(like_count - 1, 0)',
+      })
+      .where('id = :id', { id: postId })
+      .execute();
+    const post = await this.postRepo.findOne({
+      where: { id: postId },
+      select: ['id', 'authorId', 'likeCount'],
+    });
     if (!post) {
       throw AppException.notFound(ErrorCode.POST_NOT_FOUND);
     }
-
-    post.likeCount = Math.max(0, (post.likeCount || 0) - 1);
-    await this.postRepo.save(post);
     return {
       authorId: post.authorId,
       likeCount: post.likeCount,

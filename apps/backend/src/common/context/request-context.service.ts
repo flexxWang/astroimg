@@ -6,6 +6,7 @@ export type RequestContextStore = {
   traceId: string;
   method?: string;
   path?: string;
+  ip?: string;
   userId?: string;
 };
 
@@ -27,6 +28,10 @@ export class RequestContextService {
 
   getTraceId() {
     return this.get()?.traceId;
+  }
+
+  getIp() {
+    return this.get()?.ip;
   }
 
   setUserId(userId: string) {

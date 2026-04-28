@@ -3,13 +3,16 @@ import {
   WebSocketServer,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PresenceService } from './presence.service';
 import { AppException, ErrorCode } from '@/common/exceptions';
+import { buildCorsOriginValidator } from '@/common/http/origin-allowlist';
 import { AppLogger } from '@/common/logging/app-logger.service';
+import { MetricsService } from '@/common/observability/metrics.service';
 
 type MessageGatewayJwtPayload = {
   sub: string;
@@ -19,14 +22,9 @@ type MessageSocketData = {
   userId?: string;
 };
 
-@WebSocketGateway({
-  cors: {
-    origin: true,
-    credentials: true,
-  },
-})
+@WebSocketGateway()
 export class MessageGateway
-  implements OnGatewayConnection, OnGatewayDisconnect
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer()
   server!: Server;
@@ -36,7 +34,17 @@ export class MessageGateway
     private readonly configService: ConfigService,
     private readonly presenceService: PresenceService,
     private readonly logger: AppLogger,
+    private readonly metricsService: MetricsService,
   ) {}
+
+  afterInit(server: Server) {
+    server.engine.opts.cors = {
+      origin: buildCorsOriginValidator(
+        this.configService.get<string[]>('app.corsAllowedOrigins') ?? [],
+      ),
+      credentials: true,
+    };
+  }
 
   async handleConnection(client: Socket) {
     try {
@@ -57,6 +65,7 @@ export class MessageGateway
       (client.data as MessageSocketData).userId = userId;
       void client.join(this.presenceService.roomForUser(userId));
       const state = await this.presenceService.addConnection(userId, client.id);
+      this.metricsService.changeGauge('websocket_connections', 1);
       this.logger.event('message.socket.connected', {
         socketId: client.id,
         userId,
@@ -83,6 +92,7 @@ export class MessageGateway
       userId,
       client.id,
     );
+    this.metricsService.changeGauge('websocket_connections', -1);
     if (state.changed) {
       void this.server.emit('presence:update', {
         userId,

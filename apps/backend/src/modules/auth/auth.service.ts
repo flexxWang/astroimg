@@ -7,6 +7,8 @@ import type { SignOptions } from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
 import { UserService } from '../user/user.service';
 import { AppException, ErrorCode } from '@/common/exceptions';
+import { RequestContextService } from '@/common/context/request-context.service';
+import { MetricsService } from '@/common/observability/metrics.service';
 import { hashPassword, comparePassword } from '@/common/utils/crypto';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -25,6 +27,10 @@ type TokenPair = {
   refreshToken: string;
 };
 
+const LOGIN_FAILURE_WINDOW_MS = 15 * 60 * 1000;
+const LOGIN_FAILURE_ACCOUNT_LIMIT = 5;
+const LOGIN_FAILURE_IP_LIMIT = 10;
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -32,6 +38,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+    private readonly requestContext: RequestContextService,
+    private readonly metricsService: MetricsService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -56,19 +64,25 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
+    const accountKey = this.normalizeLoginIdentifier(dto.usernameOrEmail);
+    await this.assertLoginAllowed(accountKey);
+
     const user = await this.userService.findByUsernameOrEmail(
       dto.usernameOrEmail,
       true,
     );
     if (!user) {
+      await this.recordLoginFailure(accountKey);
       throw AppException.unauthorized(ErrorCode.INVALID_CREDENTIALS);
     }
 
     const isValid = await comparePassword(dto.password, user.passwordHash);
     if (!isValid) {
+      await this.recordLoginFailure(accountKey);
       throw AppException.unauthorized(ErrorCode.INVALID_CREDENTIALS);
     }
 
+    await this.clearLoginFailures(accountKey);
     return this.signTokenPair(user.id, user.username, user.email);
   }
 
@@ -211,5 +225,69 @@ export class AuthService {
 
   private refreshTokenKey(jti: string) {
     return `auth:refresh:${jti}`;
+  }
+
+  private loginFailureAccountKey(identifier: string) {
+    return `auth:login-fail:account:${identifier}`;
+  }
+
+  private loginFailureIpKey(ip: string) {
+    return `auth:login-fail:ip:${ip}`;
+  }
+
+  private normalizeLoginIdentifier(value: string) {
+    return value.trim().toLowerCase();
+  }
+
+  private getLoginFailureIp() {
+    return this.requestContext.getIp()?.trim() || 'unknown';
+  }
+
+  private async assertLoginAllowed(accountKey: string) {
+    const ipKey = this.loginFailureIpKey(this.getLoginFailureIp());
+    const [accountAttempts, ipAttempts] = await Promise.all([
+      this.cacheManager.get<number>(this.loginFailureAccountKey(accountKey)),
+      this.cacheManager.get<number>(ipKey),
+    ]);
+
+    if (
+      (accountAttempts ?? 0) >= LOGIN_FAILURE_ACCOUNT_LIMIT ||
+      (ipAttempts ?? 0) >= LOGIN_FAILURE_IP_LIMIT
+    ) {
+      this.metricsService.incrementCounter('auth_failures_total', {
+        reason: 'rate_limited',
+      });
+      throw AppException.tooManyRequests(
+        ErrorCode.TOO_MANY_REQUESTS,
+        '登录失败次数过多，请稍后再试',
+        {
+          retryAfterSeconds: Math.ceil(LOGIN_FAILURE_WINDOW_MS / 1000),
+        },
+      );
+    }
+  }
+
+  private async recordLoginFailure(accountKey: string) {
+    const ipKey = this.loginFailureIpKey(this.getLoginFailureIp());
+    await Promise.all([
+      this.incrementFailureCounter(this.loginFailureAccountKey(accountKey)),
+      this.incrementFailureCounter(ipKey),
+    ]);
+    this.metricsService.incrementCounter('auth_failures_total', {
+      reason: 'invalid_credentials',
+    });
+  }
+
+  private async clearLoginFailures(accountKey: string) {
+    const ipKey = this.loginFailureIpKey(this.getLoginFailureIp());
+    await Promise.all([
+      this.deleteCacheKey(this.loginFailureAccountKey(accountKey)),
+      this.deleteCacheKey(ipKey),
+    ]);
+  }
+
+  private async incrementFailureCounter(key: string) {
+    const current = (await this.cacheManager.get<number>(key)) ?? 0;
+    await this.cacheManager.set(key, current + 1, LOGIN_FAILURE_WINDOW_MS);
   }
 }

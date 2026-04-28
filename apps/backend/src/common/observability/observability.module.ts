@@ -4,6 +4,8 @@ import { WinstonModule } from 'nest-winston';
 import { format, transports } from 'winston';
 import { AppLogger } from '@/common/logging/app-logger.service';
 import { RequestContextService } from '@/common/context/request-context.service';
+import { MetricsController } from './metrics.controller';
+import { MetricsService } from './metrics.service';
 
 @Global()
 @Module({
@@ -15,7 +17,8 @@ import { RequestContextService } from '@/common/context/request-context.service'
       transports: [new transports.Console()],
     }),
   ],
-  providers: [RequestContextService, AppLogger],
-  exports: [RequestContextService, AppLogger, WinstonModule],
+  controllers: [MetricsController],
+  providers: [RequestContextService, AppLogger, MetricsService],
+  exports: [RequestContextService, AppLogger, MetricsService, WinstonModule],
 })
 export class ObservabilityModule {}

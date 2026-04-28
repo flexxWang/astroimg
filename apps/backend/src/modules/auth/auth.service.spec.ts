@@ -2,7 +2,9 @@ import { JwtService } from '@nestjs/jwt';
 import type { Cache } from 'cache-manager';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
+import { RequestContextService } from '@/common/context/request-context.service';
 import { ErrorCode } from '@/common/exceptions';
+import { MetricsService } from '@/common/observability/metrics.service';
 
 type CacheEntry = {
   value: unknown;
@@ -75,6 +77,12 @@ describe('AuthService refresh token rotation', () => {
       jwtService,
       configService,
       cacheManager,
+      {
+        getIp: jest.fn(() => '127.0.0.1'),
+      } as unknown as RequestContextService,
+      {
+        incrementCounter: jest.fn(),
+      } as unknown as MetricsService,
     );
   });
 

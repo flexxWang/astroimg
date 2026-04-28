@@ -31,6 +31,7 @@ import { ObservationModule } from './modules/observation/observation.module';
 import { AiModule } from './modules/ai/ai.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
+import { MetricsMiddleware } from './common/middleware/metrics.middleware';
 import { RequestContextMiddleware } from './common/middleware/request-context.middleware';
 import { ThrottleGuard } from './common/guards/throttle.guard';
 import { getBackendEnvFilePaths } from './config/env-files';
@@ -111,6 +112,9 @@ export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(RequestContextMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+    consumer
+      .apply(MetricsMiddleware)
       .forRoutes({ path: '*', method: RequestMethod.ALL });
   }
 }

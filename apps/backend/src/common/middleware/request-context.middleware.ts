@@ -36,6 +36,7 @@ export class RequestContextMiddleware implements NestMiddleware {
         traceId,
         method: req.method,
         path: req.originalUrl || req.url,
+        ip: req.ip,
       },
       () => {
         res.on('finish', () => {

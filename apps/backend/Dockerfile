@@ -25,6 +25,10 @@ FROM node:22-bookworm-slim AS runner
 ENV NODE_ENV=production
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
+ENV PORT=4000
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends dumb-init \
+  && rm -rf /var/lib/apt/lists/*
 RUN corepack enable
 WORKDIR /app
 
@@ -45,4 +49,7 @@ COPY --chown=node:node --from=build /app/package.json ./package.json
 WORKDIR /app/apps/backend
 USER node
 EXPOSE 4000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD ["node", "-e", "fetch(`http://127.0.0.1:${process.env.PORT || 4000}/health/ready`).then((res) => { if (!res.ok) process.exit(1); }).catch(() => process.exit(1))"]
+ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "dist/main.js"]

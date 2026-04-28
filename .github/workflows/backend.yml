@@ -30,6 +30,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Backend typecheck
+        run: pnpm --filter @astroimg/backend typecheck
+
+      - name: Backend lint
+        run: pnpm --filter @astroimg/backend lint
+
       - name: Backend unit tests
         run: pnpm --filter @astroimg/backend test
 

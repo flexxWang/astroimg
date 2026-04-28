@@ -14,6 +14,7 @@ import type { Response } from 'express';
 import appConfig from '../src/config/app.config';
 import { ResponseInterceptor } from '../src/common/interceptors/response.interceptor';
 import { ThrottleGuard } from '../src/common/guards/throttle.guard';
+import { MetricsService } from '../src/common/observability/metrics.service';
 import { AuthController } from '../src/modules/auth/auth.controller';
 import { AuthService } from '../src/modules/auth/auth.service';
 import { HealthController } from '../src/modules/health/health.controller';
@@ -61,6 +62,18 @@ describe('Backend infrastructure smoke tests', () => {
         ResponseInterceptor,
         ThrottleGuard,
         Reflector,
+        {
+          provide: MetricsService,
+          useValue: {
+            recordDependencyHealth: jest.fn(),
+            renderPrometheus: jest.fn(() => ''),
+            recordHttpRequest: jest.fn(),
+            incrementCounter: jest.fn(),
+            setGauge: jest.fn(),
+            changeGauge: jest.fn(),
+            observeHistogram: jest.fn(),
+          },
+        },
         {
           provide: CACHE_MANAGER,
           useValue: {
@@ -185,7 +198,7 @@ describe('Backend infrastructure smoke tests', () => {
     } as Pick<Response, 'cookie'> as Response;
 
     const result = await authController.login(
-      { usernameOrEmail: 'demo', password: 'secret123' },
+      { usernameOrEmail: 'demo', password: 'secret1234' },
       res,
     );
 

@@ -4,22 +4,16 @@ import type { INestApplication } from '@nestjs/common';
 import type { Express } from 'express';
 import helmet from 'helmet';
 import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
+import { buildCorsOriginValidator } from './common/http/origin-allowlist';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
-
-type AllowedOrigin = string | RegExp;
-
-function isOriginAllowed(origin: string, allowedOrigins: AllowedOrigin[]) {
-  return allowedOrigins.some((item) =>
-    item instanceof RegExp ? item.test(origin) : item === origin,
-  );
-}
 
 export function configureApp(app: INestApplication) {
   const configService = app.get(ConfigService);
   const trustProxy = configService.get<boolean>('app.trustProxy') ?? false;
   const allowedOrigins =
     configService.get<string[]>('app.corsAllowedOrigins') ?? [];
+  const isProduction = configService.get<boolean>('app.isProduction') ?? false;
 
   try {
     app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
@@ -36,8 +30,21 @@ export function configureApp(app: INestApplication) {
   app.use(
     helmet({
       crossOriginResourcePolicy: false,
-      contentSecurityPolicy: false,
-      hsts: configService.get<boolean>('app.isProduction')
+      contentSecurityPolicy: isProduction
+        ? {
+            directives: {
+              defaultSrc: ["'none'"],
+              baseUri: ["'none'"],
+              formAction: ["'none'"],
+              frameAncestors: ["'none'"],
+              imgSrc: ["'self'", 'data:'],
+              objectSrc: ["'none'"],
+              scriptSrc: ["'none'"],
+              styleSrc: ["'none'"],
+            },
+          }
+        : false,
+      hsts: isProduction
         ? {
             maxAge: 31_536_000,
             includeSubDomains: true,
@@ -58,22 +65,7 @@ export function configureApp(app: INestApplication) {
   app.useGlobalInterceptors(app.get(ResponseInterceptor));
 
   app.enableCors({
-    origin: (
-      origin: string | undefined,
-      callback: (error: Error | null, allow?: boolean) => void,
-    ) => {
-      if (!origin || allowedOrigins.length === 0) {
-        callback(null, true);
-        return;
-      }
-
-      if (isOriginAllowed(origin, allowedOrigins)) {
-        callback(null, true);
-        return;
-      }
-
-      callback(new Error('Origin not allowed by CORS'));
-    },
+    origin: buildCorsOriginValidator(allowedOrigins),
     credentials: true,
   });
 }
