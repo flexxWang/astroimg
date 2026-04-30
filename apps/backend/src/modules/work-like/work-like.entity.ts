@@ -2,10 +2,12 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   Unique,
 } from 'typeorm';
 
+@Index('IDX_work_likes_work_created_at', ['workId', 'createdAt'])
 @Entity('work_likes')
 @Unique(['workId', 'userId'])
 export class WorkLike {

@@ -1,6 +1,7 @@
 import { Body, Controller, Post, Req, Res } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
+import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@/common/decorators/throttle.decorator';
 import type { RequestWithContext } from '@/common/http/request.types';
 import { AuthService } from './auth.service';
@@ -34,6 +35,7 @@ function durationToMs(value: string, fallbackMs: number) {
   return amount * multiplier[unit];
 }
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -103,6 +105,7 @@ export class AuthController {
   }
 
   @Throttle({ limit: 10, ttl: 60 * 10, keyPrefix: 'auth-register' })
+  @ApiOperation({ summary: '注册账号' })
   @Post('register')
   async register(
     @Body() dto: RegisterDto,
@@ -114,6 +117,7 @@ export class AuthController {
   }
 
   @Throttle({ limit: 5, ttl: 60 * 10, keyPrefix: 'auth-login' })
+  @ApiOperation({ summary: '登录并签发 access/refresh token' })
   @Post('login')
   async login(
     @Body() dto: LoginDto,
@@ -125,6 +129,7 @@ export class AuthController {
   }
 
   @Throttle({ limit: 30, ttl: 60 * 10, keyPrefix: 'auth-refresh' })
+  @ApiOperation({ summary: '刷新 access token，并轮换 refresh token' })
   @Post('refresh')
   async refresh(
     @Req() req: RequestWithContext,
@@ -137,6 +142,7 @@ export class AuthController {
     return result;
   }
 
+  @ApiOperation({ summary: '退出登录并撤销当前会话 token' })
   @Post('logout')
   async logout(
     @Req() req: RequestWithContext,

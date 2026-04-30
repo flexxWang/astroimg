@@ -2,10 +2,12 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   Unique,
 } from 'typeorm';
 
+@Index('IDX_likes_post_created_at', ['postId', 'createdAt'])
 @Entity('likes')
 @Unique(['userId', 'postId'])
 export class Like {

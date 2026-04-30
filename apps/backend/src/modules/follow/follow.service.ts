@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, QueryFailedError, Repository } from 'typeorm';
 import { Follow } from './follow.entity';
 import { NotificationService } from '../notification/notification.service';
 import { User } from '../user/user.entity';
@@ -13,6 +13,7 @@ export class FollowService {
     private readonly followRepo: Repository<Follow>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
+    private readonly dataSource: DataSource,
     private readonly notificationService: NotificationService,
   ) {}
 
@@ -21,17 +22,36 @@ export class FollowService {
       throw AppException.badRequest(ErrorCode.FOLLOW_SELF_FORBIDDEN);
     }
 
-    const existing = await this.followRepo.findOne({
-      where: { followerId, followingId },
+    const result = await this.dataSource.transaction(async (manager) => {
+      const followRepo = manager.getRepository(Follow);
+      const existing = await followRepo.findOne({
+        where: { followerId, followingId },
+      });
+
+      if (existing) {
+        await followRepo.delete({ id: existing.id });
+        return { following: false };
+      }
+
+      try {
+        await followRepo.save(followRepo.create({ followerId, followingId }));
+      } catch (error) {
+        if (
+          error instanceof QueryFailedError &&
+          this.isDuplicateFollowError(error)
+        ) {
+          return { following: true };
+        }
+        throw error;
+      }
+
+      return { following: true };
     });
 
-    if (existing) {
-      await this.followRepo.remove(existing);
-      return { following: false };
+    if (!result.following) {
+      return result;
     }
 
-    const follow = this.followRepo.create({ followerId, followingId });
-    await this.followRepo.save(follow);
     const actor = await this.userRepo.findOne({ where: { id: followerId } });
     await this.notificationService.create({
       userId: followingId,
@@ -39,7 +59,7 @@ export class FollowService {
       actorName: actor?.username || '用户',
       type: 'follow',
     });
-    return { following: true };
+    return result;
   }
 
   async status(followerId: string, followingId: string) {
@@ -55,5 +75,12 @@ export class FollowService {
 
   countFollowing(userId: string) {
     return this.followRepo.count({ where: { followerId: userId } });
+  }
+
+  private isDuplicateFollowError(error: unknown) {
+    const driverError = (
+      error as { driverError?: { code?: string; errno?: number } }
+    ).driverError;
+    return driverError?.code === 'ER_DUP_ENTRY' || driverError?.errno === 1062;
   }
 }

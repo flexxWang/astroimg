@@ -6,11 +6,13 @@ import {
   Post as HttpPost,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import { WorkCommentService } from './work-comment.service';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { CreateWorkCommentDto } from './dto/create-work-comment.dto';
 
+@ApiTags('Work Comments')
 @Controller('works/:workId/comments')
 export class WorkCommentController {
   constructor(private readonly commentService: WorkCommentService) {}
@@ -21,6 +23,8 @@ export class WorkCommentController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('bearer')
+  @ApiCookieAuth('access_token')
   @HttpPost()
   create(
     @Param('workId') workId: string,

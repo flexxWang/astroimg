@@ -14,6 +14,20 @@ pnpm install
 pnpm run start:dev
 ```
 
+## API docs
+
+OpenAPI docs are available after the backend starts:
+
+- Swagger UI: `GET /docs`
+- OpenAPI JSON: `GET /docs-json`
+- OpenAPI YAML: `GET /docs-yaml`
+
+Apifox can import directly from the running backend URL, for example:
+
+```text
+http://127.0.0.1:4000/docs-json
+```
+
 Backend env files now follow this convention:
 
 - `.env.local`: local development

@@ -1,7 +1,9 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import { SkipThrottle } from '@/common/decorators/throttle.decorator';
 import { HealthService } from './health.service';
 
+@ApiTags('Health')
 @Controller()
 export class HealthController {
   constructor(private readonly healthService: HealthService) {}

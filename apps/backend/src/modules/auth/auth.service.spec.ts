@@ -22,10 +22,17 @@ type AppErrorLike = {
   };
 };
 
-describe('AuthService refresh token rotation', () => {
+describe('AuthService security flows', () => {
   let authService: AuthService;
   let jwtService: JwtService;
   let cacheStore: Map<string, CacheEntry>;
+  let userService: {
+    findByIdPublic: jest.Mock;
+    findByUsernameOrEmail: jest.Mock;
+  };
+  let metricsService: {
+    incrementCounter: jest.Mock;
+  };
 
   beforeEach(() => {
     cacheStore = new Map();
@@ -64,12 +71,16 @@ describe('AuthService refresh token rotation', () => {
       }),
     } as unknown as ConfigService;
 
-    const userService = {
+    userService = {
       findByIdPublic: jest.fn((id: string) => ({
         id,
         username: 'demo',
         email: 'demo@example.com',
       })),
+      findByUsernameOrEmail: jest.fn(),
+    };
+    metricsService = {
+      incrementCounter: jest.fn(),
     };
 
     authService = new AuthService(
@@ -80,9 +91,7 @@ describe('AuthService refresh token rotation', () => {
       {
         getIp: jest.fn(() => '127.0.0.1'),
       } as unknown as RequestContextService,
-      {
-        incrementCounter: jest.fn(),
-      } as unknown as MetricsService,
+      metricsService as unknown as MetricsService,
     );
   });
 
@@ -120,5 +129,38 @@ describe('AuthService refresh token rotation', () => {
       const appError = error as AppErrorLike;
       expect(appError.response?.errorCode).toBe(ErrorCode.UNAUTHORIZED);
     }
+  });
+
+  it('rate limits repeated login failures by account and ip', async () => {
+    userService.findByUsernameOrEmail.mockResolvedValue(undefined);
+
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await expect(
+        authService.login({
+          usernameOrEmail: 'demo@example.com',
+          password: 'wrong-password-123',
+        }),
+      ).rejects.toMatchObject({
+        response: {
+          errorCode: ErrorCode.INVALID_CREDENTIALS,
+        },
+      });
+    }
+
+    await expect(
+      authService.login({
+        usernameOrEmail: 'demo@example.com',
+        password: 'wrong-password-123',
+      }),
+    ).rejects.toMatchObject({
+      response: {
+        errorCode: ErrorCode.TOO_MANY_REQUESTS,
+      },
+    });
+
+    expect(metricsService.incrementCounter).toHaveBeenCalledWith(
+      'auth_failures_total',
+      { reason: 'rate_limited' },
+    );
   });
 });

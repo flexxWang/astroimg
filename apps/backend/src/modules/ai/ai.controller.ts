@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
+import { ApiBearerAuth, ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { PageQueryDto } from '@/common/dto/page-query.dto';
 import { Throttle } from '@/common/decorators/throttle.decorator';
@@ -17,8 +18,11 @@ import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
 import { AiService } from './ai.service';
 import { CreateCopilotPlanDto } from './dto/create-copilot-plan.dto';
 
+@ApiTags('AI Copilot')
 @Controller('ai/copilot')
 @UseGuards(JwtAuthGuard)
+@ApiBearerAuth('bearer')
+@ApiCookieAuth('access_token')
 export class AiController {
   constructor(private readonly aiService: AiService) {}
 

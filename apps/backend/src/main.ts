@@ -6,6 +6,7 @@ import { configureApp } from './bootstrap';
 import { RedisIoAdapter } from './common/adapters/redis-io.adapter';
 import { AppLogger } from './common/logging/app-logger.service';
 import { initBackendSentry } from './common/monitoring/sentry';
+import { setupOpenApi } from './common/openapi/setup-openapi';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
@@ -14,6 +15,7 @@ async function bootstrap() {
 
   app.use(cookieParser());
   configureApp(app);
+  setupOpenApi(app);
   const redisIoAdapter = new RedisIoAdapter(app);
   await redisIoAdapter.connectToRedis();
   app.useWebSocketAdapter(redisIoAdapter);
