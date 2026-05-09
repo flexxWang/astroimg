@@ -1,6 +1,8 @@
-export const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000";
-
+import axios, {
+  type AxiosError,
+  type AxiosRequestConfig,
+  type InternalAxiosRequestConfig,
+} from "axios";
 import {
   createRequestError,
   isApiResponse,
@@ -15,10 +17,17 @@ import {
 } from "@/lib/showApiErrorToast";
 import { ErrorCode } from "@astroimg/shared/error-codes";
 
+export const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000";
+
 type JsonLike = object | Array<unknown> | number | boolean | null;
 
-interface ApiOptions extends Omit<RequestInit, "body"> {
-  body?: BodyInit | JsonLike;
+interface ApiOptions
+  extends Omit<
+    AxiosRequestConfig,
+    "baseURL" | "data" | "timeout" | "url" | "withCredentials"
+  > {
+  body?: BodyInit | JsonLike | string;
   timeout?: number;
   errorToast?: false | ShowApiErrorToastOptions;
   authRefresh?: false;
@@ -28,6 +37,54 @@ interface ApiOptions extends Omit<RequestInit, "body"> {
 export type ApiError = RequestError;
 
 let refreshPromise: Promise<boolean> | null = null;
+let csrfPromise: Promise<string | null> | null = null;
+
+const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+const DEFAULT_TIMEOUT = 15000;
+
+const http = axios.create({
+  baseURL: API_BASE,
+  withCredentials: true,
+  headers: {
+    Accept: "application/json",
+  },
+  validateStatus: () => true,
+});
+
+const csrfHttp = axios.create({
+  baseURL: API_BASE,
+  withCredentials: true,
+  headers: {
+    Accept: "application/json",
+  },
+  validateStatus: () => true,
+});
+
+type ApiAxiosConfig = InternalAxiosRequestConfig & {
+  skipCsrf?: boolean;
+};
+
+function isUnsafeMethod(method?: string) {
+  return UNSAFE_METHODS.has((method || "GET").toUpperCase());
+}
+
+function readCookie(name: string) {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const prefix = `${name}=`;
+  const item = document.cookie
+    .split(";")
+    .map((value) => value.trim())
+    .find((value) => value.startsWith(prefix));
+
+  if (!item) {
+    return null;
+  }
+
+  return decodeURIComponent(item.slice(prefix.length));
+}
 
 function isBodyLike(value: unknown) {
   return (
@@ -61,16 +118,180 @@ function showGlobalErrorToast(
   showApiErrorToast(error, errorToast ?? {});
 }
 
-async function readResponsePayload(response: Response) {
-  try {
-    return await response.json();
-  } catch {
+function headersToObject(headers: Headers) {
+  return Object.fromEntries(headers.entries());
+}
+
+function getHeaderValue(
+  headers: InternalAxiosRequestConfig["headers"],
+  name: string,
+) {
+  if (!headers) {
+    return undefined;
+  }
+
+  const maybeHeaders = headers as {
+    get?: (headerName: string) => unknown;
+    [key: string]: unknown;
+  };
+
+  const value = maybeHeaders.get?.(name);
+  if (value !== undefined && value !== null) {
+    return String(value);
+  }
+
+  return Object.entries(maybeHeaders).find(
+    ([key]) => key.toLowerCase() === name.toLowerCase(),
+  )?.[1];
+}
+
+function toRequestError(error: unknown): ApiError {
+  if (axios.isAxiosError(error)) {
+    if (error.code === "ECONNABORTED" || error.code === "ERR_CANCELED") {
+      const timeoutError: ApiError = new Error("请求超时");
+      timeoutError.status = 408;
+      timeoutError.errorCode = ErrorCode.REQUEST_TIMEOUT;
+      return timeoutError;
+    }
+
+    const payload = error.response?.data;
+    if (error.response) {
+      return createRequestError(
+        typeof payload === "string"
+          ? payload
+          : (payload as ApiErrorPayload | null),
+        "Request failed",
+        error.response.status,
+      );
+    }
+
+    const networkError = createRequestError(
+      error.message,
+      "网络异常，请稍后再试。",
+    );
+    networkError.errorCode = ErrorCode.NETWORK_ERROR;
+    return networkError;
+  }
+
+  if (error instanceof Error) {
+    return error as ApiError;
+  }
+
+  return createRequestError(null, "网络异常，请稍后再试。");
+}
+
+function createHttpError(response: { data: unknown; status: number }) {
+  const payload = response.data;
+  return createRequestError(
+    typeof payload === "string" ? payload : (payload as ApiErrorPayload | null),
+    "Request failed",
+    response.status,
+  );
+}
+
+function normalizeApiResponse<T>(payload: unknown, status: number) {
+  if (!isApiResponse(payload)) {
+    throw createRequestError(
+      null,
+      "接口响应格式异常，请稍后再试。",
+      status,
+    );
+  }
+
+  if (!isSuccessCode(payload.code)) {
+    throw createRequestError(payload, "Request failed", payload.code);
+  }
+
+  return payload as ApiResponse<T>;
+}
+
+function prepareBodyAndHeaders(
+  rawBody: ApiOptions["body"],
+  headers: Headers,
+) {
+  if (rawBody && typeof rawBody === "object" && !isBodyLike(rawBody)) {
+    if (!headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
+    }
+    return rawBody;
+  }
+
+  if (typeof rawBody === "string") {
+    if (!headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
+    }
+
     try {
-      return await response.text();
+      return JSON.parse(rawBody);
     } catch {
-      return null;
+      return rawBody;
     }
   }
+
+  if (rawBody != null) {
+    return rawBody;
+  }
+
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  return undefined;
+}
+
+async function fetchCsrfToken() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const existing = readCookie("csrf_token");
+  if (existing) {
+    return existing;
+  }
+
+  if (!csrfPromise) {
+    csrfPromise = csrfHttp
+      .get("/auth/csrf", {
+        timeout: DEFAULT_TIMEOUT,
+      })
+      .then((response) => {
+        if (response.status < 200 || response.status >= 300) {
+          return null;
+        }
+
+        const payload = response.data;
+        if (isApiResponse(payload) && isSuccessCode(payload.code)) {
+          const data = payload.data as { csrfToken?: unknown } | null;
+          if (typeof data?.csrfToken === "string") {
+            return data.csrfToken;
+          }
+        }
+
+        return readCookie("csrf_token");
+      })
+      .catch(() => null)
+      .finally(() => {
+        csrfPromise = null;
+      });
+  }
+
+  return csrfPromise;
+}
+
+export async function attachCsrfHeader(
+  headers: Headers,
+  method?: string,
+): Promise<Headers> {
+  if (!isUnsafeMethod(method) || headers.has("X-CSRF-Token")) {
+    return headers;
+  }
+
+  const token = readCookie("csrf_token") ?? (await fetchCsrfToken());
+  if (token) {
+    headers.set("X-CSRF-Token", token);
+  }
+
+  return headers;
 }
 
 async function refreshAccessToken() {
@@ -79,20 +300,24 @@ async function refreshAccessToken() {
   }
 
   if (!refreshPromise) {
-    refreshPromise = fetch(`${API_BASE}/auth/refresh`, {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
-      .then(async (response) => {
-        if (!response.ok) {
+    const headers = new Headers({
+      "Content-Type": "application/json",
+    });
+    refreshPromise = http
+      .post(
+        "/auth/refresh",
+        undefined,
+        {
+          headers: headersToObject(await attachCsrfHeader(headers, "POST")),
+          timeout: DEFAULT_TIMEOUT,
+        },
+      )
+      .then((response) => {
+        if (response.status < 200 || response.status >= 300) {
           return false;
         }
 
-        const payload = await readResponsePayload(response);
-        return isApiResponse(payload) && isSuccessCode(payload.code);
+        return isApiResponse(response.data) && isSuccessCode(response.data.code);
       })
       .catch(() => false)
       .finally(() => {
@@ -102,6 +327,37 @@ async function refreshAccessToken() {
 
   return refreshPromise;
 }
+
+http.interceptors.request.use(async (config: ApiAxiosConfig) => {
+  const headers = new Headers(config.headers as HeadersInit);
+
+  if (!config.skipCsrf) {
+    await attachCsrfHeader(headers, config.method);
+  }
+
+  if (!getHeaderValue(config.headers, "Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  config.headers = {
+    ...config.headers,
+    ...headersToObject(headers),
+  } as InternalAxiosRequestConfig["headers"];
+
+  return config;
+});
+
+http.interceptors.response.use(
+  (response) => {
+    if (response.status < 200 || response.status >= 300) {
+      throw createHttpError(response);
+    }
+
+    response.data = normalizeApiResponse(response.data, response.status);
+    return response;
+  },
+  (error: AxiosError) => Promise.reject(toRequestError(error)),
+);
 
 function redirectToLogin() {
   if (typeof window === "undefined") {
@@ -117,94 +373,42 @@ function redirectToLogin() {
 
 async function request<T>(
   path: string,
-  requestOptions: Omit<ApiOptions, "timeout" | "errorToast" | "authRefresh">,
-  body: BodyInit | undefined,
-  headers: Headers,
-  signal: AbortSignal,
+  requestOptions: Omit<ApiOptions, "body" | "errorToast" | "authRefresh">,
+  data: unknown,
 ) {
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...requestOptions,
-    body,
-    headers,
-    credentials: "include",
-    signal,
-  });
+  try {
+    const response = await http.request({
+      ...requestOptions,
+      url: path,
+      data,
+      timeout: requestOptions.timeout ?? DEFAULT_TIMEOUT,
+    });
 
-  const payload = await readResponsePayload(response);
-
-  if (!response.ok) {
-    const normalizedPayload =
-      typeof payload === "string"
-        ? payload
-        : (payload as ApiErrorPayload | null);
-    throw createRequestError(
-      normalizedPayload,
-      "Request failed",
-      response.status,
-    );
+    return response.data as ApiResponse<T>;
+  } catch (error) {
+    throw toRequestError(error);
   }
-
-  if (!isApiResponse(payload)) {
-    throw createRequestError(
-      null,
-      "接口响应格式异常，请稍后再试。",
-      response.status,
-    );
-  }
-
-  if (!isSuccessCode(payload.code)) {
-    throw createRequestError(payload, "Request failed", payload.code);
-  }
-
-  return payload as ApiResponse<T>;
 }
 
 export async function apiFetch<T>(path: string, options: ApiOptions = {}) {
   const {
-    timeout = 15000,
+    body,
+    timeout = DEFAULT_TIMEOUT,
     errorToast,
     authRefresh = true,
     authRedirect = true,
     ...requestOptions
   } = options;
-  const headers = new Headers(requestOptions.headers);
-
-  let body: BodyInit | undefined;
-  const rawBody = options.body;
-  if (rawBody && typeof rawBody === "object" && !isBodyLike(rawBody)) {
-    body = JSON.stringify(rawBody);
-    if (!headers.has("Content-Type")) {
-      headers.set("Content-Type", "application/json");
-    }
-  } else if (typeof rawBody === "string" && !headers.has("Content-Type")) {
-    body = rawBody;
-    headers.set("Content-Type", "application/json");
-  } else if (rawBody != null) {
-    body = rawBody as BodyInit;
-  } else if (!headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
-
-  const controller = new AbortController();
-  const setTimer =
-    typeof window !== "undefined" ? window.setTimeout : setTimeout;
-  const clearTimer =
-    typeof window !== "undefined" ? window.clearTimeout : clearTimeout;
-  const timer = setTimer(() => controller.abort(), timeout);
-  if (requestOptions.signal) {
-    requestOptions.signal.addEventListener("abort", () => controller.abort(), {
-      once: true,
-    });
-  }
+  const headers = new Headers(requestOptions.headers as HeadersInit);
+  const data = prepareBodyAndHeaders(body, headers);
+  requestOptions.headers = headersToObject(headers);
 
   try {
     try {
       return await request<T>(
         path,
-        requestOptions,
-        body,
-        headers,
-        controller.signal,
+        { ...requestOptions, timeout },
+        data,
       );
     } catch (err) {
       const error = err as ApiError;
@@ -220,10 +424,8 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}) {
       if (canRefresh && (await refreshAccessToken())) {
         return await request<T>(
           path,
-          requestOptions,
-          body,
-          headers,
-          controller.signal,
+          { ...requestOptions, timeout },
+          data,
         );
       }
 
@@ -234,38 +436,9 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}) {
       throw error;
     }
   } catch (err) {
-    if ((err as Error).name === "AbortError") {
-      const error: ApiError = new Error("请求超时");
-      error.status = 408;
-      error.errorCode = ErrorCode.REQUEST_TIMEOUT;
-      showGlobalErrorToast(error, errorToast);
-      throw error;
-    }
-
-    const error =
-      err instanceof Error
-        ? (err as ApiError)
-        : createRequestError(null, "网络异常，请稍后再试。");
-
-    if (
-      !error.status &&
-      !error.errorCode &&
-      error.message &&
-      error.message !== "Request failed"
-    ) {
-      const normalizedError = createRequestError(
-        error.message,
-        "网络异常，请稍后再试。",
-      );
-      normalizedError.errorCode = ErrorCode.NETWORK_ERROR;
-      showGlobalErrorToast(normalizedError, errorToast);
-      throw normalizedError;
-    }
-
+    const error = toRequestError(err);
     showGlobalErrorToast(error, errorToast);
     throw error;
-  } finally {
-    clearTimer(timer);
   }
 }
 

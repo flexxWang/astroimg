@@ -1,3 +1,4 @@
+import axios from "axios";
 import { apiFetch } from "@/lib/apiClient";
 
 export function signUpload(filename: string, contentType?: string) {
@@ -11,15 +12,18 @@ export function signUpload(filename: string, contentType?: string) {
 }
 
 export async function uploadFile(uploadUrl: string, file: File) {
-  const response = await fetch(uploadUrl, {
-    method: "PUT",
-    body: file,
+  const response = await axios.put(uploadUrl, file, {
     headers: {
       "Content-Type": file.type || "application/octet-stream",
     },
+    validateStatus: () => true,
   });
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || "上传失败");
+
+  if (response.status < 200 || response.status >= 300) {
+    throw new Error(
+      typeof response.data === "string" && response.data
+        ? response.data
+        : "上传失败",
+    );
   }
 }

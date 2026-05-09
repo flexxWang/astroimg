@@ -45,6 +45,14 @@ export class AppException extends HttpException {
     );
   }
 
+  static forbidden(
+    errorCode: ErrorCode,
+    message?: string | string[],
+    details?: unknown,
+  ) {
+    return new AppException(HttpStatus.FORBIDDEN, errorCode, message, details);
+  }
+
   static conflict(
     errorCode: ErrorCode,
     message?: string | string[],

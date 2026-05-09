@@ -15,6 +15,13 @@ COPY . .
 RUN pnpm --filter @astroimg/shared build
 RUN pnpm --filter @astroimg/backend build
 
+FROM deps AS migration-runner
+ENV NODE_ENV=production
+COPY . .
+RUN pnpm --filter @astroimg/shared build
+WORKDIR /app
+CMD ["pnpm", "--filter", "@astroimg/backend", "migration:run"]
+
 FROM base AS prod-deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/backend/package.json apps/backend/package.json

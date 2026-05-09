@@ -34,6 +34,17 @@ function parseContentTypes(value: string | undefined) {
   return parsed.length > 0 ? parsed : defaults;
 }
 
+function parseCsv(value: string | undefined) {
+  if (!value) {
+    return [];
+  }
+
+  return value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export default registerAs('app', () => {
   const nodeEnv = process.env.NODE_ENV || 'development';
   const trustProxy = process.env.TRUST_PROXY === 'true';
@@ -52,6 +63,12 @@ export default registerAs('app', () => {
       enabled: process.env.MONITORING_ENABLED !== 'false',
       serviceName: process.env.MONITORING_SERVICE_NAME || 'astroimg-backend',
       environment: process.env.MONITORING_ENVIRONMENT || nodeEnv,
+      metrics: {
+        token: process.env.METRICS_TOKEN?.trim() || undefined,
+        allowedIps: parseCsv(
+          process.env.METRICS_ALLOWED_IPS || '127.0.0.1,::1,::ffff:127.0.0.1',
+        ),
+      },
       sentry: {
         enabled:
           process.env.SENTRY_ENABLED === 'true' &&

@@ -1,9 +1,11 @@
-import { Body, Controller, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, Post, Req, Res } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { randomBytes } from 'crypto';
 import { Throttle } from '@/common/decorators/throttle.decorator';
 import type { RequestWithContext } from '@/common/http/request.types';
+import { CSRF_COOKIE_NAME } from '@/common/middleware/csrf.middleware';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -69,6 +71,23 @@ export class AuthController {
     return options;
   }
 
+  private buildCsrfCookieOptions() {
+    const { httpOnly, maxAge, ...options } = this.buildCookieOptions('access');
+    void httpOnly;
+    void maxAge;
+    return {
+      ...options,
+      httpOnly: false,
+      maxAge: 24 * 60 * 60 * 1000,
+    };
+  }
+
+  private setCsrfCookie(res: Response) {
+    const csrfToken = randomBytes(32).toString('base64url');
+    res.cookie(CSRF_COOKIE_NAME, csrfToken, this.buildCsrfCookieOptions());
+    return csrfToken;
+  }
+
   private extractAccessToken(req: RequestWithContext) {
     const cookieToken = req.cookies?.access_token;
     if (cookieToken) {
@@ -102,6 +121,15 @@ export class AuthController {
       result.refreshToken,
       this.buildCookieOptions('refresh'),
     );
+    this.setCsrfCookie(res);
+  }
+
+  @ApiOperation({ summary: '签发浏览器写请求使用的 CSRF token cookie' })
+  @Get('csrf')
+  csrf(@Res({ passthrough: true }) res: Response) {
+    return {
+      csrfToken: this.setCsrfCookie(res),
+    };
   }
 
   @Throttle({ limit: 10, ttl: 60 * 10, keyPrefix: 'auth-register' })
@@ -152,6 +180,7 @@ export class AuthController {
     await this.authService.revokeRefreshToken(this.extractRefreshToken(req));
     res.clearCookie('access_token', this.buildClearCookieOptions());
     res.clearCookie('refresh_token', this.buildClearCookieOptions());
+    res.clearCookie(CSRF_COOKIE_NAME, this.buildClearCookieOptions());
     return null;
   }
 }

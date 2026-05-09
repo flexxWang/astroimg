@@ -16,6 +16,26 @@ type ServerFetchError = Error & {
   status?: number;
 };
 
+const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+function isUnsafeMethod(method?: string) {
+  return UNSAFE_METHODS.has((method || "GET").toUpperCase());
+}
+
+function readCookieValue(cookieHeader: string, name: string) {
+  const prefix = `${name}=`;
+  const item = cookieHeader
+    .split(";")
+    .map((value) => value.trim())
+    .find((value) => value.startsWith(prefix));
+
+  if (!item) {
+    return null;
+  }
+
+  return decodeURIComponent(item.slice(prefix.length));
+}
+
 async function readResponsePayload(response: Response) {
   try {
     return await response.json();
@@ -34,13 +54,19 @@ async function refreshServerAccessToken(cookieHeader: string) {
   }
 
   try {
+    const headers = new Headers({
+      Cookie: cookieHeader,
+      "Content-Type": "application/json",
+    });
+    const csrfToken = readCookieValue(cookieHeader, "csrf_token");
+    if (csrfToken) {
+      headers.set("X-CSRF-Token", csrfToken);
+    }
+
     const response = await fetch(`${API_BASE}/auth/refresh`, {
       method: "POST",
       cache: "no-store",
-      headers: {
-        Cookie: cookieHeader,
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     if (!response.ok) {
@@ -121,6 +147,12 @@ export async function serverFetch<T>(
   const headers = new Headers(options.headers);
   if (cookieHeader) {
     headers.set("Cookie", cookieHeader);
+  }
+  if (isUnsafeMethod(options.method) && !headers.has("X-CSRF-Token")) {
+    const csrfToken = readCookieValue(cookieHeader, "csrf_token");
+    if (csrfToken) {
+      headers.set("X-CSRF-Token", csrfToken);
+    }
   }
 
   const controller = new AbortController();

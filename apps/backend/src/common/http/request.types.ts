@@ -10,6 +10,7 @@ export type RequestWithContext = Request & {
   cookies?: {
     access_token?: string;
     refresh_token?: string;
+    csrf_token?: string;
   };
   requestId?: string;
   traceId?: string;

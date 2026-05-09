@@ -81,6 +81,13 @@ export function validateEnv(env: Record<string, unknown>) {
       'MONITORING_ENVIRONMENT',
       readString(env, 'NODE_ENV', 'development').toLowerCase(),
     ),
+    METRICS_TOKEN:
+      typeof env.METRICS_TOKEN === 'string' ? env.METRICS_TOKEN.trim() : '',
+    METRICS_ALLOWED_IPS: readString(
+      env,
+      'METRICS_ALLOWED_IPS',
+      '127.0.0.1,::1,::ffff:127.0.0.1',
+    ),
     SENTRY_ENABLED: readBoolean(env, 'SENTRY_ENABLED', false),
     SENTRY_DSN: typeof env.SENTRY_DSN === 'string' ? env.SENTRY_DSN.trim() : '',
     SENTRY_RELEASE:
@@ -192,6 +199,16 @@ export function validateEnv(env: Record<string, unknown>) {
     validated.JWT_SECRET === 'change-me-in-prod'
   ) {
     throw new Error('JWT_SECRET must be changed in production');
+  }
+
+  if (
+    validated.NODE_ENV === 'production' &&
+    !validated.METRICS_TOKEN &&
+    validated.METRICS_ALLOWED_IPS.trim().length === 0
+  ) {
+    throw new Error(
+      'METRICS_TOKEN or METRICS_ALLOWED_IPS is required in production',
+    );
   }
 
   return {

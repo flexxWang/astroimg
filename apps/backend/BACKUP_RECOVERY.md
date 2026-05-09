@@ -222,10 +222,18 @@ pnpm --filter @astroimg/backend migration:run
 pnpm --filter @astroimg/backend migration:revert
 ```
 
-Run these commands from a release checkout or migration shell with backend
-dependencies installed and production database env loaded. The production
-runtime image is optimized for `node dist/main.js`, so use a dedicated migration
-environment for rollback commands.
+Prefer the dedicated migration runner image:
+
+```bash
+docker build -f apps/backend/Dockerfile --target migration-runner -t astroimg-backend-migrations .
+docker run --rm --env-file apps/backend/.env.production astroimg-backend-migrations pnpm --filter @astroimg/backend migration:show
+docker run --rm --env-file apps/backend/.env.production astroimg-backend-migrations pnpm --filter @astroimg/backend migration:revert
+```
+
+You can also run commands from a release checkout or migration shell with
+backend dependencies installed and production database env loaded. The
+production runtime image is optimized for `node dist/main.js`, so use a
+dedicated migration environment for rollback commands.
 
 Before rollback:
 

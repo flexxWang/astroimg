@@ -114,6 +114,12 @@ Push the image:
 docker push "$DOCKER_IMAGE"
 ```
 
+Build the dedicated migration runner image:
+
+```bash
+docker build -f apps/backend/Dockerfile --target migration-runner -t "${DOCKER_IMAGE}-migrations" .
+```
+
 ## 4. Sentry release
 
 Set the backend Sentry env before deployment:
@@ -138,8 +144,8 @@ same release value.
 ## 5. Migration
 
 Prefer applying migrations as an explicit deployment step so failures are easy
-to identify. Run these commands from a release checkout or migration shell that
-has the backend dependencies installed and network access to production MySQL.
+to identify. Use the dedicated migration runner image or a release checkout
+that has backend dependencies installed and network access to production MySQL.
 Do not assume the production runtime image can run TypeORM CLI commands; that
 image is optimized for `node dist/main.js`.
 
@@ -152,13 +158,13 @@ pnpm --filter @astroimg/backend migration:show
 Apply migrations:
 
 ```bash
-NODE_ENV=production pnpm --filter @astroimg/backend migration:run
+docker run --rm --env-file apps/backend/.env.production "${DOCKER_IMAGE}-migrations"
 ```
 
 Immediately check migration state:
 
 ```bash
-NODE_ENV=production pnpm --filter @astroimg/backend migration:show
+docker run --rm --env-file apps/backend/.env.production "${DOCKER_IMAGE}-migrations" pnpm --filter @astroimg/backend migration:show
 ```
 
 Post-migration checks:
@@ -194,7 +200,7 @@ Run these checks from outside the cluster or host:
 curl -fsS "$BACKEND_URL/health/live"
 curl -fsS "$BACKEND_URL/health/ready"
 curl -fsS "$BACKEND_URL/health"
-curl -fsS "$BACKEND_URL/metrics" | head
+curl -fsS -H "Authorization: Bearer $METRICS_TOKEN" "$BACKEND_URL/metrics" | head
 curl -fsS "$BACKEND_URL/docs-json" >/tmp/astroimg-openapi.json
 ```
 
@@ -252,8 +258,8 @@ docker compose --env-file .env.docker.local up -d --build backend
 If the migration must also be reverted, run one migration rollback at a time:
 
 ```bash
-NODE_ENV=production pnpm --filter @astroimg/backend migration:revert
-NODE_ENV=production pnpm --filter @astroimg/backend migration:show
+docker run --rm --env-file apps/backend/.env.production "${DOCKER_IMAGE}-migrations" pnpm --filter @astroimg/backend migration:revert
+docker run --rm --env-file apps/backend/.env.production "${DOCKER_IMAGE}-migrations" pnpm --filter @astroimg/backend migration:show
 ```
 
 Repeat `migration:revert` only after confirming the next pending rollback is

@@ -33,7 +33,9 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { MetricsMiddleware } from './common/middleware/metrics.middleware';
 import { RequestContextMiddleware } from './common/middleware/request-context.middleware';
+import { CsrfMiddleware } from './common/middleware/csrf.middleware';
 import { ThrottleGuard } from './common/guards/throttle.guard';
+import { MetricsAuthGuard } from './common/guards/metrics-auth.guard';
 import { getBackendEnvFilePaths } from './config/env-files';
 import { ObservabilityModule } from './common/observability/observability.module';
 import { HealthModule } from './modules/health/health.module';
@@ -102,6 +104,7 @@ import { HealthModule } from './modules/health/health.module';
   providers: [
     HttpExceptionFilter,
     ResponseInterceptor,
+    MetricsAuthGuard,
     {
       provide: APP_GUARD,
       useClass: ThrottleGuard,
@@ -112,6 +115,9 @@ export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(RequestContextMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+    consumer
+      .apply(CsrfMiddleware)
       .forRoutes({ path: '*', method: RequestMethod.ALL });
     consumer
       .apply(MetricsMiddleware)

@@ -49,6 +49,18 @@ SENTRY_TRACES_SAMPLE_RATE=0
 
 When enabled, 5xx exceptions are reported with `requestId`, `traceId`, and authenticated `userId`.
 
+## Security endpoints and headers
+
+Prometheus metrics are protected. Set `METRICS_TOKEN` for scraper auth and send
+it as either `Authorization: Bearer <token>` or `X-Metrics-Token: <token>`.
+`METRICS_ALLOWED_IPS` can also allow trusted scraper IPs, and defaults to
+loopback addresses only.
+
+Browser clients that use auth cookies must send a CSRF header for unsafe
+methods (`POST`, `PUT`, `PATCH`, `DELETE`). Fetch `GET /auth/csrf` or complete
+login/register/refresh to receive the readable `csrf_token` cookie, then echo
+that value in `X-CSRF-Token`.
+
 ## Local infra with Docker Compose
 
 Start MySQL, Redis and MinIO:
@@ -170,6 +182,27 @@ pnpm run migration:run
 pnpm run migration:revert
 pnpm run migration:create
 pnpm run migration:generate
+```
+
+### Docker migration runner
+
+Build a dedicated migration image from the repository root:
+
+```bash
+docker build -f apps/backend/Dockerfile --target migration-runner -t astroimg-backend-migrations .
+```
+
+Run pending migrations with production database env:
+
+```bash
+docker run --rm --env-file apps/backend/.env.production astroimg-backend-migrations
+```
+
+To inspect or revert migrations, override the command:
+
+```bash
+docker run --rm --env-file apps/backend/.env.production astroimg-backend-migrations pnpm --filter @astroimg/backend migration:show
+docker run --rm --env-file apps/backend/.env.production astroimg-backend-migrations pnpm --filter @astroimg/backend migration:revert
 ```
 
 ## Notes

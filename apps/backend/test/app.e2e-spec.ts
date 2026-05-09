@@ -14,6 +14,8 @@ import type { Response } from 'express';
 import appConfig from '../src/config/app.config';
 import { ResponseInterceptor } from '../src/common/interceptors/response.interceptor';
 import { ThrottleGuard } from '../src/common/guards/throttle.guard';
+import { MetricsAuthGuard } from '../src/common/guards/metrics-auth.guard';
+import { CsrfMiddleware } from '../src/common/middleware/csrf.middleware';
 import { MetricsService } from '../src/common/observability/metrics.service';
 import { AuthController } from '../src/modules/auth/auth.controller';
 import { AuthService } from '../src/modules/auth/auth.service';
@@ -27,6 +29,7 @@ describe('Backend infrastructure smoke tests', () => {
   let healthService: HealthService;
   let authController: AuthController;
   let throttleGuard: ThrottleGuard;
+  let metricsAuthGuard: MetricsAuthGuard;
   let responseInterceptor: ResponseInterceptor;
   let uploadService: { checkHealth: jest.Mock };
   let cacheStore: Map<string, { value: unknown; expiresAt: number }>;
@@ -38,6 +41,8 @@ describe('Backend infrastructure smoke tests', () => {
     process.env.CORS_ALLOWED_ORIGINS = 'http://localhost:3000';
     process.env.COOKIE_SECURE = 'true';
     process.env.COOKIE_SAME_SITE = 'none';
+    process.env.METRICS_TOKEN = 'metrics-secret';
+    process.env.METRICS_ALLOWED_IPS = '127.0.0.1,::1,::ffff:127.0.0.1';
 
     cacheStore = new Map();
     cacheClient = { isReady: true };
@@ -61,6 +66,8 @@ describe('Backend infrastructure smoke tests', () => {
         HealthService,
         ResponseInterceptor,
         ThrottleGuard,
+        MetricsAuthGuard,
+        CsrfMiddleware,
         Reflector,
         {
           provide: MetricsService,
@@ -147,6 +154,7 @@ describe('Backend infrastructure smoke tests', () => {
     healthService = moduleFixture.get(HealthService);
     authController = moduleFixture.get(AuthController);
     throttleGuard = moduleFixture.get(ThrottleGuard);
+    metricsAuthGuard = moduleFixture.get(MetricsAuthGuard);
     responseInterceptor = moduleFixture.get(ResponseInterceptor);
   });
 
@@ -217,6 +225,35 @@ describe('Backend infrastructure smoke tests', () => {
       'refresh-login',
       expect.objectContaining({
         httpOnly: true,
+        secure: true,
+        sameSite: 'none',
+      }),
+    );
+    expect(cookie).toHaveBeenCalledWith(
+      'csrf_token',
+      expect.any(String),
+      expect.objectContaining({
+        httpOnly: false,
+        secure: true,
+        sameSite: 'none',
+      }),
+    );
+  });
+
+  it('issues a readable csrf token cookie', () => {
+    const cookie = jest.fn();
+    const res = {
+      cookie,
+    } as Pick<Response, 'cookie'> as Response;
+
+    const result = authController.csrf(res);
+
+    expect(result.csrfToken).toEqual(expect.any(String));
+    expect(cookie).toHaveBeenCalledWith(
+      'csrf_token',
+      result.csrfToken,
+      expect.objectContaining({
+        httpOnly: false,
         secure: true,
         sameSite: 'none',
       }),
@@ -294,6 +331,79 @@ describe('Backend infrastructure smoke tests', () => {
         sameSite: 'none',
       }),
     );
+    expect(clearCookie).toHaveBeenCalledWith(
+      'csrf_token',
+      expect.objectContaining({
+        httpOnly: true,
+        secure: true,
+        sameSite: 'none',
+      }),
+    );
+  });
+
+  it('protects metrics with token or allowed ip', () => {
+    const tokenContext = {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          ip: '203.0.113.10',
+          get: jest.fn((name: string) =>
+            name.toLowerCase() === 'authorization'
+              ? 'Bearer metrics-secret'
+              : undefined,
+          ),
+        }),
+      }),
+    } as unknown as ExecutionContext;
+
+    expect(metricsAuthGuard.canActivate(tokenContext)).toBe(true);
+
+    const ipContext = {
+      switchToHttp: () => ({
+        getRequest: () => ({
+          ip: '127.0.0.1',
+          get: jest.fn(),
+        }),
+      }),
+    } as unknown as ExecutionContext;
+
+    expect(metricsAuthGuard.canActivate(ipContext)).toBe(true);
+  });
+
+  it('rejects csrf-protected cookie requests without a matching header', () => {
+    const middleware = moduleFixture.get(CsrfMiddleware);
+    const next = jest.fn();
+    const req = {
+      method: 'POST',
+      cookies: {
+        access_token: 'access',
+        csrf_token: 'csrf-value',
+      },
+      get: jest.fn(() => undefined),
+    } as unknown as Parameters<CsrfMiddleware['use']>[0];
+
+    expect(() => middleware.use(req, {} as Response, next)).toThrow(
+      HttpException,
+    );
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('allows csrf-protected cookie requests with a matching header', () => {
+    const middleware = moduleFixture.get(CsrfMiddleware);
+    const next = jest.fn();
+    const req = {
+      method: 'POST',
+      cookies: {
+        access_token: 'access',
+        csrf_token: 'csrf-value',
+      },
+      get: jest.fn((name: string) =>
+        name.toLowerCase() === 'x-csrf-token' ? 'csrf-value' : undefined,
+      ),
+    } as unknown as Parameters<CsrfMiddleware['use']>[0];
+
+    middleware.use(req, {} as Response, next);
+
+    expect(next).toHaveBeenCalledTimes(1);
   });
 
   it('throttles repeated auth login requests', async () => {

@@ -3,7 +3,7 @@ import {
   parseApiErrorMessage,
   type ApiErrorPayload,
 } from "@/lib/apiResponse";
-import { apiFetch, API_BASE } from "@/lib/apiClient";
+import { apiFetch, API_BASE, attachCsrfHeader } from "@/lib/apiClient";
 import type {
   AiCopilotInput,
   AiPlanHistoryItem,
@@ -88,13 +88,18 @@ export async function streamAiPlan(
   handlers: StreamHandlers,
   options?: { signal?: AbortSignal },
 ) {
+  const headers = await attachCsrfHeader(
+    new Headers({
+      "Content-Type": "application/json",
+      Accept: "text/event-stream",
+    }),
+    "POST",
+  );
+
   const response = await fetch(`${API_BASE}/ai/copilot/plan/stream`, {
     method: "POST",
     credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      Accept: "text/event-stream",
-    },
+    headers,
     body: JSON.stringify(payload),
     signal: options?.signal,
   });
