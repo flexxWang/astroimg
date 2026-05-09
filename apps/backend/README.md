@@ -106,6 +106,8 @@ pnpm --filter @astroimg/backend migration:run
   - Includes HTTP request count/latency, 5xx error count, dependency health
     latency, auth failure count, upload sign failure count, and WebSocket
     connection gauge.
+- Release runbook: [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md)
+- Backup and recovery runbook: [BACKUP_RECOVERY.md](./BACKUP_RECOVERY.md)
 
 ## MinIO (local)
 

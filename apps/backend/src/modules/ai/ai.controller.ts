@@ -10,7 +10,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Response } from 'express';
-import { ApiBearerAuth, ApiCookieAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiCookieAuth,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { PageQueryDto } from '@/common/dto/page-query.dto';
 import { Throttle } from '@/common/decorators/throttle.decorator';
@@ -27,6 +32,7 @@ export class AiController {
   constructor(private readonly aiService: AiService) {}
 
   @Throttle({ limit: 20, ttl: 60 * 5, keyPrefix: 'ai-plan' })
+  @ApiOperation({ summary: '生成 AI 观测计划' })
   @HttpPost('plan')
   createPlan(
     @CurrentUser() user: { id: string },
@@ -36,6 +42,7 @@ export class AiController {
   }
 
   @Throttle({ limit: 10, ttl: 60 * 5, keyPrefix: 'ai-stream' })
+  @ApiOperation({ summary: '流式生成 AI 观测计划' })
   @HttpPost('plan/stream')
   async streamPlan(
     @CurrentUser() user: { id: string },
@@ -68,11 +75,13 @@ export class AiController {
     }
   }
 
+  @ApiOperation({ summary: '获取 AI 观测计划历史' })
   @Get('history')
   history(@CurrentUser() user: { id: string }, @Query() query: PageQueryDto) {
     return this.aiService.history(user.id, query.page, query.pageSize);
   }
 
+  @ApiOperation({ summary: '删除 AI 观测计划历史记录' })
   @Delete('history/:id')
   removeHistory(@CurrentUser() user: { id: string }, @Param('id') id: string) {
     return this.aiService.removeHistory(user.id, id);
