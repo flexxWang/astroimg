@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Bell } from "lucide-react";
 import { fetchUnreadCount } from "@/features/notifications/services/notificationApi";
+import { queryKeys } from "@/lib/queryKeys";
 import { useUserStore } from "@/stores/userStore";
 
 export default function NotificationBell() {
@@ -11,7 +12,7 @@ export default function NotificationBell() {
   const hydrated = useUserStore((state) => state.hydrated);
 
   const { data } = useQuery({
-    queryKey: ["notifications", "unread", user?.id],
+    queryKey: queryKeys.notifications.unread(user?.id),
     queryFn: () => fetchUnreadCount(),
     enabled: Boolean(user),
     refetchInterval: 30_000,

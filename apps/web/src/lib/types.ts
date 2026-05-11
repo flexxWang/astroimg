@@ -4,6 +4,14 @@ export interface AuthorInfo {
   avatarUrl?: string;
 }
 
+export interface BaseComment {
+  id: string;
+  authorId: string;
+  author?: AuthorInfo;
+  content: string;
+  createdAt?: string;
+}
+
 export interface PostListItem {
   id: string;
   title: string;
@@ -66,13 +74,7 @@ export interface WorkItem {
   commentCount?: number;
 }
 
-export interface WorkComment {
-  id: string;
-  authorId: string;
-  author?: AuthorInfo;
-  content: string;
-  createdAt?: string;
-}
+export type WorkComment = BaseComment;
 
 export interface ObservationPoint {
   id: string;

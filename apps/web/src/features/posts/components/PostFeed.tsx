@@ -9,6 +9,7 @@ import {
   type PostListItem,
 } from "@/features/posts/services/postApi";
 import type { Paginated } from "@/lib/types";
+import { queryKeys } from "@/lib/queryKeys";
 
 interface PostFeedProps {
   initialPage?: Paginated<PostListItem>;
@@ -44,7 +45,11 @@ export default function PostFeed({
     isFetchingNextPage,
     isFetching,
   } = useInfiniteQuery({
-    queryKey: ["posts", "feed", userId ?? "all", pageSize, keyword ?? ""],
+    queryKey: queryKeys.posts.feed({
+      userId,
+      pageSize,
+      keyword,
+    }),
     queryFn: ({ pageParam = 1 }) => {
       if (isUserFeed && userId) {
         return fetchPostsByUserPage(userId, pageParam, pageSize).then(

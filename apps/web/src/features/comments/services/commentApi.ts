@@ -1,16 +1,7 @@
 import { apiFetch } from "@/lib/apiClient";
+import type { BaseComment } from "@/lib/types";
 
-export interface CommentItem {
-  id: string;
-  authorId: string;
-  author?: {
-    id: string;
-    username?: string | null;
-    avatarUrl?: string | null;
-  };
-  content: string;
-  createdAt?: string;
-}
+export type CommentItem = BaseComment;
 
 export function fetchComments(postId: string) {
   return apiFetch<CommentItem[]>(`/posts/${postId}/comments`);

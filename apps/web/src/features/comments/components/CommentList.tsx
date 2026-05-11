@@ -1,18 +1,7 @@
 import UserAvatar from "@/shared/components/UserAvatar";
+import type { BaseComment } from "@/lib/types";
 
-export interface CommentItem {
-  id: string;
-  authorId: string;
-  author?: {
-    id: string;
-    username?: string | null;
-    avatarUrl?: string | null;
-  };
-  content: string;
-  createdAt?: string;
-}
-
-export default function CommentList({ comments }: { comments: CommentItem[] }) {
+export default function CommentList({ comments }: { comments: BaseComment[] }) {
   return (
     <div className="space-y-4">
       {comments.map((comment) => (

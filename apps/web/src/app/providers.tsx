@@ -1,34 +1,33 @@
 "use client";
 
 import * as Sentry from "@sentry/nextjs";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactNode, useEffect, useState } from "react";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useUserStore } from "@/stores/userStore";
 import { fetchMe } from "@/features/users/services/userApi";
 import { disconnectSocket, getSocket } from "@/lib/socket";
+import { createAppQueryClient } from "@/lib/queryClient";
+import { queryKeys } from "@/lib/queryKeys";
 
 export default function Providers({ children }: { children: ReactNode }) {
   const hydrate = useUserStore((state) => state.hydrate);
   const setUser = useUserStore((state) => state.setUser);
   const user = useUserStore((state) => state.user);
-  const [client] = useState(() =>
-    new QueryClient({
-      defaultOptions: {
-        queries: {
-          staleTime: 30_000,
-          refetchOnWindowFocus: false,
-        },
-      },
-    }),
-  );
+  const [client] = useState(createAppQueryClient);
 
   useEffect(() => {
     fetchMe({ errorToast: false })
-      .then((result) => setUser(result.data))
-      .catch(() => setUser(null))
+      .then((result) => {
+        setUser(result.data);
+        client.setQueryData(queryKeys.auth.me(), result);
+      })
+      .catch(() => {
+        setUser(null);
+        client.removeQueries({ queryKey: queryKeys.auth.me() });
+      })
       .finally(() => hydrate());
-  }, [hydrate, setUser]);
+  }, [client, hydrate, setUser]);
 
   useEffect(() => {
     if (user) {
@@ -47,9 +46,9 @@ export default function Providers({ children }: { children: ReactNode }) {
       };
     }
 
-    client.removeQueries({ queryKey: ["conversations"] });
-    client.removeQueries({ queryKey: ["messages"] });
-    client.removeQueries({ queryKey: ["messages-search"] });
+    client.removeQueries({ queryKey: queryKeys.messages.allConversations() });
+    client.removeQueries({ queryKey: queryKeys.messages.all() });
+    client.removeQueries({ queryKey: queryKeys.messages.allSearch() });
     disconnectSocket();
     Sentry.setUser(null);
   }, [client, user]);

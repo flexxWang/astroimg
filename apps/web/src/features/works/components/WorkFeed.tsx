@@ -5,6 +5,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { fetchWorksByUserPage, fetchWorksPage } from "@/features/works/services/workApi";
 import type { Paginated, WorkItem } from "@/lib/types";
 import WorkCard from "@/features/works/components/WorkCard";
+import { queryKeys } from "@/lib/queryKeys";
 
 export default function WorkFeed({
   initialPage,
@@ -30,7 +31,7 @@ export default function WorkFeed({
 
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery({
-      queryKey: ["works", "feed", userId ?? "all", pageSize],
+      queryKey: queryKeys.works.feed({ userId, pageSize }),
       queryFn: ({ pageParam = 1 }) => {
         if (isUserFeed && userId) {
           return fetchWorksByUserPage(userId, pageParam, pageSize).then(

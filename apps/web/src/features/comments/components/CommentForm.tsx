@@ -1,46 +1,47 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { createComment } from "@/features/comments/services/commentApi";
-import { useUserStore } from "@/stores/userStore";
-import { getErrorMessage } from "@/lib/errorMessages";
 
-export default function CommentForm({ postId }: { postId: string }) {
-  const router = useRouter();
-  const user = useUserStore((state) => state.user);
+interface CommentFormProps {
+  error?: string | null;
+  isSubmitting?: boolean;
+  maxLength?: number;
+  onSubmit: (content: string) => Promise<boolean | void> | boolean | void;
+  placeholder?: string;
+  submitLabel?: string;
+}
+
+export default function CommentForm({
+  error,
+  isSubmitting = false,
+  maxLength = 300,
+  onSubmit,
+  placeholder = "写下你的评论...",
+  submitLabel = "发布评论",
+}: CommentFormProps) {
   const [content, setContent] = useState("");
-  const maxLength = 300;
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-    if (!content.trim()) return;
-    if (content.length > maxLength) return;
+    const nextContent = content.trim();
+    if (!nextContent) return;
+    if (nextContent.length > maxLength) return;
 
-    setLoading(true);
-    setError(null);
     try {
-      await createComment(postId, { content });
-      setContent("");
-      router.refresh();
-    } catch (err) {
-      setError(getErrorMessage(err, "评论失败，请稍后再试。"));
-    } finally {
-      setLoading(false);
+      const shouldReset = await onSubmit(nextContent);
+      if (shouldReset !== false) {
+        setContent("");
+      }
+    } catch {
+      // Error state is controlled by the parent mutation handler.
     }
   };
 
   return (
     <div className="space-y-3">
       <Textarea
-        placeholder="写下你的评论..."
+        placeholder={placeholder}
         value={content}
         onChange={(event) => setContent(event.target.value)}
       />
@@ -54,9 +55,11 @@ export default function CommentForm({ postId }: { postId: string }) {
       <div className="flex justify-end">
         <Button
           onClick={handleSubmit}
-          disabled={loading || !content.trim() || content.length > maxLength}
+          disabled={
+            isSubmitting || !content.trim() || content.trim().length > maxLength
+          }
         >
-          {loading ? "发送中..." : "发布评论"}
+          {isSubmitting ? "发送中..." : submitLabel}
         </Button>
       </div>
     </div>

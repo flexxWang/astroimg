@@ -11,6 +11,7 @@ import {
 import { useUserStore } from "@/stores/userStore";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { queryKeys } from "@/lib/queryKeys";
 
 export default function MessageThreadPage() {
   const params = useParams();
@@ -27,7 +28,7 @@ export default function MessageThreadPage() {
   }, [hydrated, router, user]);
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ["messages", conversationId],
+    queryKey: queryKeys.messages.thread(conversationId),
     queryFn: () => fetchMessages(conversationId),
     enabled: Boolean(user),
   });

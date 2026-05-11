@@ -23,7 +23,7 @@ export class WorkCommentService {
     private readonly workService: WorkService,
   ) {}
 
-  async listByWork(workId: string) {
+  private baseQuery() {
     return this.commentRepo
       .createQueryBuilder('comment')
       .leftJoin('comment.author', 'author')
@@ -33,25 +33,31 @@ export class WorkCommentService {
       .addSelect('comment.authorId', 'comment_authorId')
       .addSelect('author.id', 'author_id')
       .addSelect('author.username', 'author_username')
-      .addSelect('author.avatarUrl', 'author_avatarUrl')
+      .addSelect('author.avatarUrl', 'author_avatarUrl');
+  }
+
+  private mapComment(row: WorkCommentRow) {
+    return {
+      id: row.comment_id,
+      content: row.comment_content,
+      createdAt: row.comment_createdAt,
+      authorId: row.comment_authorId,
+      author: row.author_id
+        ? {
+            id: row.author_id,
+            username: row.author_username,
+            avatarUrl: row.author_avatarUrl,
+          }
+        : undefined,
+    };
+  }
+
+  async listByWork(workId: string) {
+    return this.baseQuery()
       .where('comment.workId = :workId', { workId })
       .orderBy('comment.createdAt', 'DESC')
       .getRawMany<WorkCommentRow>()
-      .then((rows) =>
-        rows.map((row) => ({
-          id: row.comment_id,
-          content: row.comment_content,
-          createdAt: row.comment_createdAt,
-          authorId: row.comment_authorId,
-          author: row.author_id
-            ? {
-                id: row.author_id,
-                username: row.author_username,
-                avatarUrl: row.author_avatarUrl,
-              }
-            : undefined,
-        })),
-      );
+      .then((rows) => rows.map((row) => this.mapComment(row)));
   }
 
   async create(workId: string, authorId: string, dto: CreateWorkCommentDto) {
@@ -62,6 +68,11 @@ export class WorkCommentService {
     });
     const saved = await this.commentRepo.save(comment);
     await this.workService.incrementCommentCount(workId);
-    return saved;
+
+    const row = await this.baseQuery()
+      .where('comment.id = :id', { id: saved.id })
+      .getRawOne<WorkCommentRow>();
+
+    return row ? this.mapComment(row) : saved;
   }
 }

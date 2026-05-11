@@ -1,9 +1,8 @@
 import { notFound } from "next/navigation";
-import CommentForm from "@/features/comments/components/CommentForm";
-import CommentList from "@/features/comments/components/CommentList";
-import type { CommentItem } from "@/features/comments/components/CommentList";
+import type { CommentItem } from "@/features/comments/services/commentApi";
 import FollowButton from "@/features/follows/components/FollowButton";
 import LikeButton from "@/features/posts/components/LikeButton";
+import PostCommentsSection from "@/features/posts/components/PostCommentsSection";
 import UserAvatar from "@/shared/components/UserAvatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -71,16 +70,7 @@ export default async function PostDetailPage({
       <div className="flex items-center gap-3">
         <LikeButton postId={post.id} initialCount={post.likeCount ?? 0} />
       </div>
-
-      <section className="space-y-4">
-        <h2 className="text-lg font-semibold">评论</h2>
-        <CommentForm postId={id} />
-        {comments.length === 0 ? (
-          <div className="text-sm text-muted-foreground">暂无评论</div>
-        ) : (
-          <CommentList comments={comments} />
-        )}
-      </section>
+      <PostCommentsSection postId={id} initialComments={comments} />
     </div>
   );
 }
