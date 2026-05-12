@@ -1,29 +1,64 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
+  fetchNotifications,
   markAllRead,
   markNotificationRead,
   type NotificationItem,
 } from "@/features/notifications/services/notificationApi";
+import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
+import { queryKeys } from "@/lib/queryKeys";
 
 export default function NotificationList({
-  items,
+  items: initialItems,
 }: {
   items: NotificationItem[];
 }) {
-  const router = useRouter();
+  const queryClient = useQueryClient();
+  const { user } = useCurrentUser();
+  const { data: items = [] } = useQuery({
+    queryKey: queryKeys.notifications.list(),
+    queryFn: () => fetchNotifications().then((result) => result.data),
+    initialData: initialItems,
+    enabled: Boolean(user),
+  });
+  const markReadMutation = useMutation({
+    mutationFn: (id: string) => markNotificationRead(id).then((result) => result.data),
+    onSuccess: (updatedItem) => {
+      queryClient.setQueryData<NotificationItem[]>(
+        queryKeys.notifications.list(),
+        (current = []) =>
+          current.map((item) =>
+            item.id === updatedItem.id ? { ...item, read: true } : item,
+          ),
+      );
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.notifications.unread(user?.id),
+      });
+    },
+  });
+  const markAllReadMutation = useMutation({
+    mutationFn: () => markAllRead(),
+    onSuccess: () => {
+      queryClient.setQueryData<NotificationItem[]>(
+        queryKeys.notifications.list(),
+        (current = []) => current.map((item) => ({ ...item, read: true })),
+      );
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.notifications.unread(user?.id),
+      });
+    },
+  });
 
   const handleRead = async (id: string) => {
-    await markNotificationRead(id);
-    router.refresh();
+    await markReadMutation.mutateAsync(id);
   };
 
   const handleReadAll = async () => {
-    await markAllRead();
-    router.refresh();
+    await markAllReadMutation.mutateAsync();
   };
 
   return (
@@ -65,6 +100,7 @@ export default function NotificationList({
                     size="sm"
                     variant="ghost"
                     onClick={() => handleRead(item.id)}
+                    disabled={markReadMutation.isPending}
                   >
                     标记已读
                   </Button>
@@ -74,7 +110,11 @@ export default function NotificationList({
                 <Link
                   href={`/post/${item.postId}`}
                   className="text-xs text-muted-foreground"
-                  onClick={() => handleRead(item.id)}
+                  onClick={() => {
+                    if (!item.read) {
+                      void handleRead(item.id);
+                    }
+                  }}
                 >
                   查看详情
                 </Link>

@@ -5,6 +5,7 @@ import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import L from "leaflet";
 import { useQuery } from "@tanstack/react-query";
 import { fetchObservationPoints } from "@/features/observations/services/observationApi";
+import { queryKeys } from "@/lib/queryKeys";
 
 type LeafletDefaultIconPrototype = typeof L.Icon.Default.prototype & {
   _getIconUrl?: string;
@@ -20,7 +21,7 @@ L.Icon.Default.mergeOptions({
 
 export default function ObservationMap() {
   const { data } = useQuery({
-    queryKey: ["observation-points"],
+    queryKey: queryKeys.observations.points(),
     queryFn: fetchObservationPoints,
   });
 

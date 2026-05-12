@@ -3,10 +3,11 @@
 import { useQuery } from "@tanstack/react-query";
 import PostCard from "@/features/posts/components/PostCard";
 import { fetchPosts } from "@/features/posts/services/postApi";
+import { queryKeys } from "@/lib/queryKeys";
 
 export default function PostList() {
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["posts"],
+    queryKey: queryKeys.posts.all(),
     queryFn: fetchPosts,
   });
 

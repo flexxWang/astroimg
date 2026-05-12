@@ -32,6 +32,7 @@ interface ApiOptions
   errorToast?: false | ShowApiErrorToastOptions;
   authRefresh?: false;
   authRedirect?: false;
+  suppressUnauthorized?: boolean;
 }
 
 export type ApiError = RequestError;
@@ -397,6 +398,7 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}) {
     errorToast,
     authRefresh = true,
     authRedirect = true,
+    suppressUnauthorized = false,
     ...requestOptions
   } = options;
   const headers = new Headers(requestOptions.headers as HeadersInit);
@@ -433,11 +435,17 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}) {
         redirectToLogin();
       }
 
+      if (suppressUnauthorized && error.status === 401) {
+        error.toastShown = true;
+      }
+
       throw error;
     }
   } catch (err) {
     const error = toRequestError(err);
-    showGlobalErrorToast(error, errorToast);
+    if (!(suppressUnauthorized && error.status === 401)) {
+      showGlobalErrorToast(error, errorToast);
+    }
     throw error;
   }
 }

@@ -1,24 +1,28 @@
 "use client";
 
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { useConversationMessages } from "@/features/messages/hooks/useConversationMessages";
 import {
-  type ConversationItem,
+  appendMessageToThreadCache,
+  clearConversationUnread,
+  setPresenceInConversationList,
+} from "@/features/messages/messageCache";
+import {
   type MessageItem,
   fetchConversations,
   markConversationRead,
   searchMessages,
   sendMessage,
 } from "@/features/messages/services/messageApi";
-import type { ApiResponse } from "@/lib/apiResponse";
+import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
 import { searchUsers } from "@/features/users/services/userSearchApi";
-import { useUserStore } from "@/stores/userStore";
+import { queryKeys } from "@/lib/queryKeys";
 import { getSocket } from "@/lib/socket";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { useInfiniteMessages } from "@/features/messages/hooks/useInfiniteMessages";
 
 type PresenceUpdate = {
   userId: string;
@@ -37,8 +41,7 @@ function MessagesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const searchRecipientId = searchParams.get("to");
-  const user = useUserStore((state) => state.user);
-  const hydrated = useUserStore((state) => state.hydrated);
+  const { hydrated, user } = useCurrentUser();
   const queryClient = useQueryClient();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draftRecipientOverride, setDraftRecipientOverride] = useState<string | null>(
@@ -53,6 +56,7 @@ function MessagesPageContent() {
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const pendingScrollRef = useRef(false);
+
   const scrollToBottom = () => {
     const el = scrollRef.current;
     if (!el) return;
@@ -69,18 +73,13 @@ function MessagesPageContent() {
     }
   }, [hydrated, router, user]);
 
-  const conversationsQueryKey = useMemo(
-    () => ["conversations", user?.id] as const,
-    [user?.id],
-  );
-
-  const { data: convData, refetch: refetchConversations } = useQuery({
+  const conversationsQueryKey = queryKeys.messages.conversations(user?.id);
+  const { data: conversations = [] } = useQuery({
     queryKey: conversationsQueryKey,
-    queryFn: () => fetchConversations(),
+    queryFn: () => fetchConversations().then((result) => result.data),
     enabled: Boolean(user),
   });
 
-  const conversations = useMemo(() => convData?.data ?? [], [convData]);
   const recipientOverride = draftRecipientOverride ?? searchRecipientId;
   const selectedConversationId = useMemo(() => {
     if (recipientOverride) {
@@ -94,118 +93,95 @@ function MessagesPageContent() {
   }, [activeId, conversations, recipientOverride]);
 
   const activeConversation = useMemo(
-    () => conversations.find((c) => c.id === selectedConversationId) || null,
+    () => conversations.find((conversation) => conversation.id === selectedConversationId) ?? null,
     [conversations, selectedConversationId],
   );
 
   const {
-    messages,
-    loadMore,
-    hasMore,
-    loadingMore,
     appendMessage,
-    reload,
+    hasMore,
     loading,
-  } = useInfiniteMessages(selectedConversationId);
+    loadingMore,
+    loadMore,
+    messages,
+  } = useConversationMessages(selectedConversationId);
+
+  const sendMessageMutation = useMutation({
+    mutationFn: ({ content, recipientId }: { content: string; recipientId: string }) =>
+      sendMessage(recipientId, content).then((result) => result.data),
+    onSuccess: (message) => {
+      setContent("");
+      setDraftRecipientOverride(null);
+
+      if (message.conversationId) {
+        setActiveId(message.conversationId);
+        appendMessageToThreadCache(queryClient, message.conversationId, message);
+      } else if (selectedConversationId) {
+        appendMessage(message);
+      }
+
+      scrollToBottom();
+      queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
+    },
+  });
 
   useEffect(() => {
     if (!user) return;
     const socket = getSocket();
+
     const refreshHandler = () => {
-      refetchConversations();
+      queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
     };
     const presenceHandler = (payload: PresenceUpdate) => {
-      queryClient.setQueryData<ApiResponse<ConversationItem[]> | undefined>(
-        conversationsQueryKey,
-        (current) => {
-          if (!current?.data) return current;
-          return {
-            ...current,
-            data: current.data.map((conversation) =>
-              conversation.otherUserId === payload.userId
-                ? { ...conversation, online: payload.online }
-                : conversation,
-            ),
-          };
-        },
+      setPresenceInConversationList(
+        queryClient,
+        user.id,
+        payload.userId,
+        payload.online,
       );
     };
-    const clearConversationUnread = (conversationId: string) => {
-      queryClient.setQueryData<ApiResponse<ConversationItem[]> | undefined>(
-        conversationsQueryKey,
-        (current) => {
-          if (!current?.data) return current;
-          return {
-            ...current,
-            data: current.data.map((conversation) =>
-              conversation.id === conversationId
-                ? { ...conversation, unreadCount: 0 }
-                : conversation,
-            ),
-          };
-        },
-      );
-    };
-    const handler = (message: MessageItem) => {
+    const messageHandler = (message: MessageItem) => {
       if (message.senderId === user.id) {
         return;
       }
 
-      refetchConversations();
+      queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
       if (selectedConversationId === message.conversationId) {
-        reload();
+        appendMessageToThreadCache(queryClient, message.conversationId, message);
         markConversationRead(selectedConversationId)
-          .then(() => clearConversationUnread(selectedConversationId))
+          .then(() =>
+            clearConversationUnread(queryClient, user.id, selectedConversationId),
+          )
           .catch(() => {});
       }
     };
     const readHandler = (payload: { conversationId?: string }) => {
       if (payload.conversationId) {
-        clearConversationUnread(payload.conversationId);
+        clearConversationUnread(queryClient, user.id, payload.conversationId);
       }
     };
+
     socket.on("connect", refreshHandler);
-    socket.on("message:new", handler);
+    socket.on("message:new", messageHandler);
     socket.on("conversation:read", readHandler);
     socket.on("presence:update", presenceHandler);
+
     return () => {
       socket.off("connect", refreshHandler);
-      socket.off("message:new", handler);
+      socket.off("message:new", messageHandler);
       socket.off("conversation:read", readHandler);
       socket.off("presence:update", presenceHandler);
     };
-  }, [
-    conversationsQueryKey,
-    queryClient,
-    refetchConversations,
-    reload,
-    selectedConversationId,
-    user,
-  ]);
-
-  const messagesList = messages;
+  }, [conversationsQueryKey, queryClient, selectedConversationId, user]);
 
   useEffect(() => {
     if (!selectedConversationId || !user) return;
     markConversationRead(selectedConversationId)
-      .then(() => {
-        queryClient.setQueryData<ApiResponse<ConversationItem[]> | undefined>(
-          conversationsQueryKey,
-          (current) => {
-            if (!current?.data) return current;
-            return {
-              ...current,
-              data: current.data.map((conversation) =>
-                conversation.id === selectedConversationId
-                  ? { ...conversation, unreadCount: 0 }
-                  : conversation,
-              ),
-            };
-          },
-        );
-      })
+      .then(() =>
+        clearConversationUnread(queryClient, user.id, selectedConversationId),
+      )
       .catch(() => {});
-  }, [conversationsQueryKey, queryClient, selectedConversationId, user]);
+  }, [queryClient, selectedConversationId, user]);
 
   useEffect(() => {
     if (debouncedMessageSearch.length > 0) return;
@@ -215,7 +191,7 @@ function MessagesPageContent() {
     if (distanceToBottom < 200) {
       bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [debouncedMessageSearch, messagesList.length]);
+  }, [debouncedMessageSearch, messages.length]);
 
   useEffect(() => {
     if (!selectedConversationId) return;
@@ -223,50 +199,40 @@ function MessagesPageContent() {
   }, [selectedConversationId]);
 
   useLayoutEffect(() => {
-    if (!pendingScrollRef.current) return;
-    if (loading) return;
+    if (!pendingScrollRef.current || loading) return;
     const el = scrollRef.current;
     if (!el) return;
-    if (messagesList.length === 0) {
+    if (messages.length === 0) {
       el.scrollTop = 0;
       pendingScrollRef.current = false;
       return;
     }
+
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         el.scrollTop = el.scrollHeight - el.clientHeight;
         pendingScrollRef.current = false;
       });
     });
-  }, [loading, messagesList.length, selectedConversationId]);
+  }, [loading, messages.length, selectedConversationId]);
 
-  const { data: searchMsgData } = useQuery({
-    queryKey: ["messages-search", selectedConversationId, debouncedMessageSearch],
-    queryFn: () => searchMessages(selectedConversationId!, debouncedMessageSearch),
+  const { data: searchResults = [] } = useQuery({
+    queryKey: queryKeys.messages.search(
+      selectedConversationId ?? "pending",
+      debouncedMessageSearch,
+    ),
+    queryFn: () =>
+      searchMessages(selectedConversationId!, debouncedMessageSearch).then(
+        (result) => result.data,
+      ),
     enabled: Boolean(selectedConversationId && debouncedMessageSearch.length > 0),
   });
 
-  const { data: searchData } = useQuery({
-    queryKey: ["user-search", debouncedSearch],
-    queryFn: () => searchUsers(debouncedSearch),
+  const { data: searchedUsers = [] } = useQuery({
+    queryKey: queryKeys.users.search(debouncedSearch),
+    queryFn: () => searchUsers(debouncedSearch).then((result) => result.data),
     enabled: debouncedSearch.length > 0,
   });
-
-  const handleSend = async () => {
-    const recipientId = recipientOverride || activeConversation?.otherUserId;
-    if (!recipientId || !content.trim()) return;
-    try {
-      const result = await sendMessage(recipientId, content);
-      setContent("");
-      setDraftRecipientOverride(null);
-      if (result.data.conversationId) {
-        setActiveId(result.data.conversationId);
-      }
-      appendMessage(result.data);
-      scrollToBottom();
-      queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
-    } catch {}
-  };
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -275,20 +241,6 @@ function MessagesPageContent() {
     return () => window.clearTimeout(handle);
   }, [search]);
 
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      handleSend();
-    }
-  };
-
-  const handleStartChat = async (userId: string) => {
-    setDraftRecipientOverride(userId);
-    setActiveId(null);
-    setSearch("");
-    setSearchOpen(false);
-  };
-
   useEffect(() => {
     const handle = window.setTimeout(() => {
       setDebouncedMessageSearch(messageSearch.trim());
@@ -296,18 +248,40 @@ function MessagesPageContent() {
     return () => window.clearTimeout(handle);
   }, [messageSearch]);
 
-  const searchedUsers = useMemo(() => searchData?.data ?? [], [searchData]);
+  if (!hydrated || !user) {
+    return null;
+  }
 
-  if (!hydrated || !user) return null;
+  const handleSend = async () => {
+    const recipientId = recipientOverride || activeConversation?.otherUserId;
+    if (!recipientId || !content.trim()) return;
+    await sendMessageMutation.mutateAsync({ recipientId, content });
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      void handleSend();
+    }
+  };
+
+  const handleStartChat = (userId: string) => {
+    setDraftRecipientOverride(userId);
+    setActiveId(null);
+    setSearch("");
+    setSearchOpen(false);
+  };
 
   const handleLoadMore = async () => {
     const el = scrollRef.current;
     if (!el) return;
-    const prevHeight = el.scrollHeight;
+    const previousHeight = el.scrollHeight;
     await loadMore();
-    const newHeight = el.scrollHeight;
-    el.scrollTop = newHeight - prevHeight;
+    const nextHeight = el.scrollHeight;
+    el.scrollTop = nextHeight - previousHeight;
   };
+
+  const visibleMessages = debouncedMessageSearch.length > 0 ? searchResults : messages;
 
   return (
     <div className="h-[70vh] rounded-2xl border bg-white/80 shadow-sm">
@@ -318,23 +292,21 @@ function MessagesPageContent() {
             <Input
               placeholder="搜索用户"
               value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
+              onChange={(event) => {
+                setSearch(event.target.value);
                 setSearchOpen(true);
               }}
             />
             {searchOpen && search.length > 0 ? (
               <div className="rounded-xl border bg-white">
-                {searchedUsers.map((u) => (
+                {searchedUsers.map((searchUser) => (
                   <button
-                    key={u.id}
+                    key={searchUser.id}
                     className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50"
-                    onClick={() => handleStartChat(u.id)}
+                    onClick={() => handleStartChat(searchUser.id)}
                   >
-                    <span>{u.username}</span>
-                    <span className="text-xs text-muted-foreground">
-                      发起聊天
-                    </span>
+                    <span>{searchUser.username}</span>
+                    <span className="text-xs text-muted-foreground">发起聊天</span>
                   </button>
                 ))}
                 {searchedUsers.length === 0 ? (
@@ -345,35 +317,38 @@ function MessagesPageContent() {
               </div>
             ) : null}
           </div>
+
           <div className="mt-4 space-y-2">
-            {conversations.map((c) => (
+            {conversations.map((conversation) => (
               <button
-                key={c.id}
+                key={conversation.id}
                 className={`w-full rounded-xl px-3 py-2 text-left ${
-                  c.id === selectedConversationId ? "bg-slate-100" : "hover:bg-slate-50"
+                  conversation.id === selectedConversationId
+                    ? "bg-slate-100"
+                    : "hover:bg-slate-50"
                 }`}
                 onClick={() => {
                   setDraftRecipientOverride(null);
-                  setActiveId(c.id);
+                  setActiveId(conversation.id);
                 }}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm font-medium">
-                    <span>{c.otherUsername}</span>
+                    <span>{conversation.otherUsername}</span>
                     <span
                       className={`h-2 w-2 rounded-full ${
-                        c.online ? "bg-emerald-500" : "bg-slate-300"
+                        conversation.online ? "bg-emerald-500" : "bg-slate-300"
                       }`}
                     />
                   </div>
-                  {c.unreadCount ? (
+                  {conversation.unreadCount ? (
                     <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] text-white">
-                      {c.unreadCount}
+                      {conversation.unreadCount}
                     </span>
                   ) : null}
                 </div>
                 <div className="text-xs text-muted-foreground line-clamp-1">
-                  {c.lastMessage}
+                  {conversation.lastMessage}
                 </div>
               </button>
             ))}
@@ -391,11 +366,12 @@ function MessagesPageContent() {
               <Input
                 placeholder="搜索消息"
                 value={messageSearch}
-                onChange={(e) => setMessageSearch(e.target.value)}
+                onChange={(event) => setMessageSearch(event.target.value)}
                 className="max-w-[200px]"
               />
             ) : null}
           </div>
+
           <div
             ref={scrollRef}
             className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3"
@@ -403,24 +379,18 @@ function MessagesPageContent() {
               const el = scrollRef.current;
               if (!el || debouncedMessageSearch.length > 0) return;
               if (el.scrollTop === 0 && hasMore) {
-                handleLoadMore();
+                void handleLoadMore();
               }
             }}
           >
             {loadingMore ? (
-              <div className="text-center text-xs text-muted-foreground">
-                加载中...
-              </div>
+              <div className="text-center text-xs text-muted-foreground">加载中...</div>
             ) : null}
-            {!hasMore && messagesList.length > 0 ? (
-              <div className="text-center text-xs text-muted-foreground">
-                没有更多了
-              </div>
+            {!hasMore && messages.length > 0 ? (
+              <div className="text-center text-xs text-muted-foreground">没有更多了</div>
             ) : null}
-            {(debouncedMessageSearch.length > 0
-              ? (searchMsgData?.data ?? [])
-              : messagesList
-            ).map((msg, index, list) => {
+
+            {visibleMessages.map((message, index, list) => {
               const formatDate = (date: Date) => {
                 const now = new Date();
                 const diffMs = now.getTime() - date.getTime();
@@ -439,8 +409,8 @@ function MessagesPageContent() {
                 return date.toLocaleDateString();
               };
 
-              const currentDate = msg.createdAt
-                ? formatDate(new Date(msg.createdAt))
+              const currentDate = message.createdAt
+                ? formatDate(new Date(message.createdAt))
                 : "";
               const prev = list[index - 1];
               const prevDate = prev?.createdAt
@@ -449,7 +419,7 @@ function MessagesPageContent() {
               const showDivider = currentDate && currentDate !== prevDate;
 
               return (
-                <div key={msg.id} className="space-y-2">
+                <div key={message.id} className="space-y-2">
                   {showDivider ? (
                     <div className="w-full text-center text-xs text-muted-foreground my-2">
                       {currentDate}
@@ -457,20 +427,20 @@ function MessagesPageContent() {
                   ) : null}
                   <div
                     className={`flex ${
-                      msg.senderId === user.id ? "justify-end" : "justify-start"
+                      message.senderId === user.id ? "justify-end" : "justify-start"
                     }`}
                   >
                     <div
                       className={`max-w-[70%] rounded-2xl px-4 py-2 text-sm ${
-                        msg.senderId === user.id
+                        message.senderId === user.id
                           ? "bg-slate-900 text-white"
                           : "bg-slate-100 text-slate-900"
                       }`}
                     >
-                      {msg.content}
-                      {msg.senderId === user.id ? (
+                      {message.content}
+                      {message.senderId === user.id ? (
                         <div className="mt-1 text-[10px] text-white/70 text-right">
-                          {msg.read ? "已读" : "未读"}
+                          {message.read ? "已读" : "未读"}
                         </div>
                       ) : null}
                     </div>
@@ -478,25 +448,28 @@ function MessagesPageContent() {
                 </div>
               );
             })}
-            {(
-              debouncedMessageSearch.length > 0
-                ? (searchMsgData?.data ?? []).length === 0
-                : messagesList.length === 0
-            ) ? (
+
+            {(debouncedMessageSearch.length > 0
+              ? searchResults.length === 0
+              : messages.length === 0) ? (
               <div className="text-sm text-muted-foreground">暂无消息</div>
             ) : null}
             <div ref={bottomRef} />
           </div>
+
           <div className="border-t p-4">
             <Textarea
               placeholder="输入消息..."
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              onChange={(event) => setContent(event.target.value)}
               onKeyDown={handleKeyDown}
             />
             <div className="mt-2 flex justify-end">
-              <Button onClick={handleSend} disabled={!content.trim()}>
-                发送
+              <Button
+                onClick={() => void handleSend()}
+                disabled={!content.trim() || sendMessageMutation.isPending}
+              >
+                {sendMessageMutation.isPending ? "发送中..." : "发送"}
               </Button>
             </div>
           </div>

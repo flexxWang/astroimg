@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useUserStore } from "@/stores/userStore";
+import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
 import PostEditor from "@/features/posts/components/PostEditor";
 import { createPost } from "@/features/posts/services/postApi";
 import {
@@ -18,7 +18,7 @@ import { showErrorToast, showSuccessToast } from "@/lib/showToastMessage";
 
 export default function CreatePostPage() {
   const router = useRouter();
-  const user = useUserStore((state) => state.user);
+  const { user } = useCurrentUser();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);

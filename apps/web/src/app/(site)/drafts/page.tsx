@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
 import { fetchDrafts, publishDraft } from "@/features/drafts/services/draftApi";
 import { excerpt } from "@/lib/format";
-import { useUserStore } from "@/stores/userStore";
+import { queryKeys } from "@/lib/queryKeys";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -17,11 +18,10 @@ import {
 
 export default function DraftListPage() {
   const router = useRouter();
-  const user = useUserStore((state) => state.user);
-  const hydrated = useUserStore((state) => state.hydrated);
+  const { hydrated, user } = useCurrentUser();
 
   const { data, isLoading } = useQuery({
-    queryKey: ["drafts", user?.id],
+    queryKey: queryKeys.drafts.list(user?.id),
     queryFn: () => fetchDrafts(),
     enabled: Boolean(user),
     refetchOnMount: "always",

@@ -2,8 +2,12 @@ export const queryKeys = {
   auth: {
     me: () => ["auth", "me"] as const,
   },
+  ai: {
+    history: () => ["ai-copilot-history"] as const,
+  },
   posts: {
     all: () => ["posts"] as const,
+    likeStatus: (postId: string) => ["posts", "likes", postId, "me"] as const,
     feed: (params?: {
       userId?: string;
       pageSize?: number;
@@ -21,13 +25,18 @@ export const queryKeys = {
       ["posts", "detail", postId, "comments"] as const,
   },
   works: {
+    all: () => ["works"] as const,
     feed: (params?: { userId?: string; pageSize?: number }) =>
       ["works", "feed", params?.userId ?? "all", params?.pageSize ?? 12] as const,
     detail: (workId: string) => ["works", "detail", workId] as const,
     comments: (workId: string) =>
       ["works", "detail", workId, "comments"] as const,
+    likeStatus: (workId: string) => ["works", "likes", workId, "me"] as const,
+    types: () => ["works", "types"] as const,
+    devices: () => ["works", "devices"] as const,
   },
   notifications: {
+    list: () => ["notifications", "list"] as const,
     unread: (userId?: string) =>
       ["notifications", "unread", userId ?? "guest"] as const,
   },
@@ -45,9 +54,14 @@ export const queryKeys = {
   users: {
     allSearch: () => ["user-search"] as const,
     search: (keyword: string) => ["user-search", keyword] as const,
+    profile: (userId: string) => ["users", "profile", userId] as const,
+  },
+  follows: {
+    status: (userId: string) => ["follows", "status", userId] as const,
   },
   drafts: {
     list: (userId?: string) => ["drafts", userId ?? "guest"] as const,
+    detail: (draftId: string) => ["drafts", "detail", draftId] as const,
   },
   observations: {
     points: () => ["observation-points"] as const,

@@ -7,14 +7,15 @@ import { Button } from "@/components/ui/button";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import StreamPlanSections from "@/features/ai/components/StreamPlanSections";
+import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
 import { showApiErrorToast } from "@/lib/showApiErrorToast";
+import { queryKeys } from "@/lib/queryKeys";
 import {
   showErrorToast,
   showSuccessToast,
   showToastMessage,
 } from "@/lib/showToastMessage";
 import { createDraft } from "@/features/drafts/services/draftApi";
-import { useUserStore } from "@/stores/userStore";
 import {
   deleteAiPlanHistory,
   fetchAiPlanHistory,
@@ -52,7 +53,7 @@ export default function AiCopilotClient({
   initialHistoryPage,
 }: AiCopilotClientProps) {
   const router = useRouter();
-  const user = useUserStore((state) => state.user);
+  const { user } = useCurrentUser();
   const [input, setInput] = useState<AiCopilotInput>(defaultInput());
   const [loading, setLoading] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
@@ -77,7 +78,7 @@ export default function AiCopilotClient({
     isFetchingNextPage,
     isFetching: isHistoryFetching,
   } = useInfiniteQuery({
-    queryKey: ["ai-copilot-history"],
+    queryKey: queryKeys.ai.history(),
     queryFn: ({ pageParam = 1 }) =>
       fetchAiPlanHistory(pageParam, 10).then((res) => res.data),
     enabled: Boolean(user),

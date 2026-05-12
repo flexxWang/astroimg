@@ -4,12 +4,11 @@ import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { Bell } from "lucide-react";
 import { fetchUnreadCount } from "@/features/notifications/services/notificationApi";
+import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
 import { queryKeys } from "@/lib/queryKeys";
-import { useUserStore } from "@/stores/userStore";
 
 export default function NotificationBell() {
-  const user = useUserStore((state) => state.user);
-  const hydrated = useUserStore((state) => state.hydrated);
+  const { user, hydrated } = useCurrentUser();
 
   const { data } = useQuery({
     queryKey: queryKeys.notifications.unread(user?.id),

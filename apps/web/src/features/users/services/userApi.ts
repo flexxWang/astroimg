@@ -31,9 +31,14 @@ export function login(payload: { usernameOrEmail: string; password: string }) {
   });
 }
 
-export function fetchMe(options?: { errorToast?: false }) {
+export function fetchMe(options?: {
+  errorToast?: false;
+  suppressUnauthorized?: boolean;
+}) {
   return apiFetch<{ id: string; username: string }>("/users/me", {
     errorToast: options?.errorToast,
     authRedirect: false,
+    suppressUnauthorized:
+      options?.suppressUnauthorized ?? options?.errorToast === false,
   });
 }

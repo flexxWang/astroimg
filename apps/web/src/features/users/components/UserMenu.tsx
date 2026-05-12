@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
+import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
+import { queryKeys } from "@/lib/queryKeys";
 import UserAvatar from "@/shared/components/UserAvatar";
-import { useUserStore } from "@/stores/userStore";
 import { logout } from "@/features/users/services/authApi";
 
 export default function UserMenu() {
-  const user = useUserStore((state) => state.user);
-  const setUser = useUserStore((state) => state.setUser);
+  const queryClient = useQueryClient();
+  const { user } = useCurrentUser();
 
   if (!user) {
     return (
@@ -29,7 +31,7 @@ export default function UserMenu() {
 
   const handleLogout = async () => {
     await logout();
-    setUser(null);
+    queryClient.removeQueries({ queryKey: queryKeys.auth.me() });
   };
 
   return (

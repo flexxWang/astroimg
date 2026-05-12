@@ -1,23 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
 import {
-  fetchMessages,
   markConversationRead,
   sendMessage,
 } from "@/features/messages/services/messageApi";
-import { useUserStore } from "@/stores/userStore";
+import { useConversationMessages } from "@/features/messages/hooks/useConversationMessages";
+import { appendMessageToThreadCache } from "@/features/messages/messageCache";
+import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { queryKeys } from "@/lib/queryKeys";
 
 export default function MessageThreadPage() {
   const params = useParams();
   const router = useRouter();
-  const user = useUserStore((state) => state.user);
-  const hydrated = useUserStore((state) => state.hydrated);
+  const queryClient = useQueryClient();
+  const { hydrated, user } = useCurrentUser();
   const [content, setContent] = useState("");
   const conversationId = params.id as string;
 
@@ -27,13 +27,15 @@ export default function MessageThreadPage() {
     }
   }, [hydrated, router, user]);
 
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: queryKeys.messages.thread(conversationId),
-    queryFn: () => fetchMessages(conversationId),
-    enabled: Boolean(user),
+  const { loading, messages } = useConversationMessages(conversationId);
+  const sendMessageMutation = useMutation({
+    mutationFn: (recipientId: string) =>
+      sendMessage(recipientId, content).then((result) => result.data),
+    onSuccess: (message) => {
+      setContent("");
+      appendMessageToThreadCache(queryClient, message.conversationId, message);
+    },
   });
-
-  const messages = useMemo(() => data?.data ?? [], [data]);
 
   useEffect(() => {
     if (user) {
@@ -51,15 +53,13 @@ export default function MessageThreadPage() {
 
   const handleSend = async () => {
     if (!recipientId || !content.trim()) return;
-    await sendMessage(recipientId, content);
-    setContent("");
-    await refetch();
+    await sendMessageMutation.mutateAsync(recipientId);
   };
 
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-semibold">会话</h1>
-      {isLoading ? (
+      {loading ? (
         <div className="text-sm text-muted-foreground">加载中...</div>
       ) : (
         <div className="space-y-3 rounded-2xl border bg-white/80 p-4">
@@ -91,8 +91,11 @@ export default function MessageThreadPage() {
           onChange={(event) => setContent(event.target.value)}
         />
         <div className="flex justify-end">
-          <Button onClick={handleSend} disabled={!content.trim()}>
-            发送
+          <Button
+            onClick={handleSend}
+            disabled={!content.trim() || sendMessageMutation.isPending}
+          >
+            {sendMessageMutation.isPending ? "发送中..." : "发送"}
           </Button>
         </div>
       </div>

@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { fetchWorkLikeStatus, toggleWorkLike } from "@/features/works/services/workLikeApi";
-import { useUserStore } from "@/stores/userStore";
+import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
+import { queryKeys } from "@/lib/queryKeys";
 import { showErrorToast } from "@/lib/showToastMessage";
 
 export default function WorkLikeButton({
@@ -13,27 +14,24 @@ export default function WorkLikeButton({
   workId: string;
   initialCount?: number;
 }) {
-  const user = useUserStore((state) => state.user);
-  const [liked, setLiked] = useState(false);
-  const [count, setCount] = useState(initialCount);
-
-  useEffect(() => {
-    if (!user) return;
-    fetchWorkLikeStatus(workId)
-      .then((res) => setLiked(res.data.liked))
-      .catch(() => {});
-  }, [user, workId]);
+  const { user } = useCurrentUser();
+  const { data: likeStatus } = useQuery({
+    queryKey: queryKeys.works.likeStatus(workId),
+    queryFn: () => fetchWorkLikeStatus(workId).then((res) => res.data),
+    enabled: Boolean(user),
+  });
+  const toggleLikeMutation = useMutation({
+    mutationFn: () => toggleWorkLike(workId).then((result) => result.data),
+  });
+  const liked = likeStatus?.liked ?? false;
+  const count = toggleLikeMutation.data?.likeCount ?? initialCount;
 
   const handleToggle = async () => {
     if (!user) {
       showErrorToast("请先登录", "登录后才能点赞作品。");
       return;
     }
-    try {
-      const result = await toggleWorkLike(workId);
-      setLiked(result.data.liked);
-      setCount(result.data.likeCount);
-    } catch {}
+    await toggleLikeMutation.mutateAsync();
   };
 
   return (
@@ -42,6 +40,7 @@ export default function WorkLikeButton({
       variant={liked ? "default" : "secondary"}
       size="sm"
       onClick={handleToggle}
+      disabled={toggleLikeMutation.isPending}
     >
       {liked ? "已点赞" : "点赞"} {count}
     </Button>

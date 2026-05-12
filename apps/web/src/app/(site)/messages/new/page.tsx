@@ -1,8 +1,9 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useUserStore } from "@/stores/userStore";
+import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
 import { sendMessage } from "@/features/messages/services/messageApi";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,10 +20,15 @@ function NewMessageContent() {
   const router = useRouter();
   const params = useSearchParams();
   const recipientId = params.get("to") || "";
-  const user = useUserStore((state) => state.user);
-  const hydrated = useUserStore((state) => state.hydrated);
+  const { hydrated, user } = useCurrentUser();
   const [content, setContent] = useState("");
-  const [loading, setLoading] = useState(false);
+  const sendMessageMutation = useMutation({
+    mutationFn: (messageContent: string) =>
+      sendMessage(recipientId, messageContent).then((result) => result.data),
+    onSuccess: (message) => {
+      router.push(`/messages/${message.conversationId}`);
+    },
+  });
 
   useEffect(() => {
     if (hydrated && !user) {
@@ -34,13 +40,7 @@ function NewMessageContent() {
 
   const handleSend = async () => {
     if (!recipientId || !content.trim()) return;
-    setLoading(true);
-    try {
-      const result = await sendMessage(recipientId, content);
-      router.push(`/messages/${result.data.conversationId}`);
-    } finally {
-      setLoading(false);
-    }
+    await sendMessageMutation.mutateAsync(content);
   };
 
   return (
@@ -52,8 +52,11 @@ function NewMessageContent() {
         onChange={(event) => setContent(event.target.value)}
       />
       <div className="flex justify-end">
-        <Button onClick={handleSend} disabled={loading || !content.trim()}>
-          {loading ? "发送中..." : "发送"}
+        <Button
+          onClick={handleSend}
+          disabled={sendMessageMutation.isPending || !content.trim()}
+        >
+          {sendMessageMutation.isPending ? "发送中..." : "发送"}
         </Button>
       </div>
     </div>

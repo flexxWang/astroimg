@@ -5,9 +5,9 @@ import type { QueryKey } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import CommentForm from "@/features/comments/components/CommentForm";
 import CommentList from "@/features/comments/components/CommentList";
+import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
 import { getErrorMessage } from "@/lib/errorMessages";
 import type { BaseComment } from "@/lib/types";
-import { useUserStore } from "@/stores/userStore";
 
 interface CommentsSectionProps<TComment extends BaseComment> {
   createComment: (content: string) => Promise<TComment>;
@@ -32,7 +32,7 @@ export default function CommentsSection<TComment extends BaseComment>({
 }: CommentsSectionProps<TComment>) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const user = useUserStore((state) => state.user);
+  const { user } = useCurrentUser();
 
   const { data: comments = [] } = useQuery({
     queryKey,

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { useUserStore } from "@/stores/userStore";
+import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
 import { useToast } from "@/hooks/useToast";
 import {
   createWork,
@@ -16,11 +16,12 @@ import {
 } from "@/features/works/services/workApi";
 import { signUpload, uploadFile } from "@/features/uploads/services/uploadApi";
 import { showApiErrorToast } from "@/lib/showApiErrorToast";
+import { queryKeys } from "@/lib/queryKeys";
 import { showErrorToast, showSuccessToast } from "@/lib/showToastMessage";
 
 export default function CreateWorkPage() {
   const router = useRouter();
-  const user = useUserStore((state) => state.user);
+  const { user } = useCurrentUser();
   const { hasToast } = useToast();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -33,11 +34,11 @@ export default function CreateWorkPage() {
   const [publishing, setPublishing] = useState(false);
 
   const { data: typesData } = useQuery({
-    queryKey: ["work-types"],
+    queryKey: queryKeys.works.types(),
     queryFn: fetchWorkTypes,
   });
   const { data: devicesData } = useQuery({
-    queryKey: ["work-devices"],
+    queryKey: queryKeys.works.devices(),
     queryFn: fetchWorkDevices,
   });
 

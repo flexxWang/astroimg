@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import PostEditor from "@/features/posts/components/PostEditor";
 import { Button } from "@/components/ui/button";
-import { useUserStore } from "@/stores/userStore";
+import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
 import { fetchDraft, publishDraft, updateDraft } from "@/features/drafts/services/draftApi";
 import { useToast } from "@/hooks/useToast";
 import { showErrorToast, showSuccessToast } from "@/lib/showToastMessage";
@@ -14,7 +14,7 @@ import { showErrorToast, showSuccessToast } from "@/lib/showToastMessage";
 export default function DraftEditPage() {
   const params = useParams();
   const router = useRouter();
-  const user = useUserStore((state) => state.user);
+  const { user } = useCurrentUser();
   const { hasToast } = useToast();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");

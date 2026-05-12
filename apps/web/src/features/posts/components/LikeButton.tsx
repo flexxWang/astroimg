@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
 import { fetchLikeStatus, toggleLike } from "@/features/posts/services/likeApi";
-import { useUserStore } from "@/stores/userStore";
+import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
+import { Button } from "@/components/ui/button";
+import { queryKeys } from "@/lib/queryKeys";
 
 export default function LikeButton({
   postId,
@@ -14,31 +15,24 @@ export default function LikeButton({
   initialCount?: number;
 }) {
   const router = useRouter();
-  const user = useUserStore((state) => state.user);
-  const [liked, setLiked] = useState(false);
-  const [count, setCount] = useState(initialCount);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (!user) return;
-    fetchLikeStatus(postId).then((result) => {
-      setLiked(result.data.liked);
-    }).catch(() => {});
-  }, [postId, user]);
+  const { user } = useCurrentUser();
+  const { data: likeStatus } = useQuery({
+    queryKey: queryKeys.posts.likeStatus(postId),
+    queryFn: () => fetchLikeStatus(postId).then((result) => result.data),
+    enabled: Boolean(user),
+  });
+  const toggleLikeMutation = useMutation({
+    mutationFn: () => toggleLike(postId).then((result) => result.data),
+  });
+  const liked = likeStatus?.liked ?? false;
+  const count = toggleLikeMutation.data?.likeCount ?? initialCount;
 
   const handleToggle = async () => {
     if (!user) {
       router.push("/login");
       return;
     }
-    setLoading(true);
-    try {
-      const result = await toggleLike(postId);
-      setLiked(result.data.liked);
-      setCount(result.data.likeCount);
-    } finally {
-      setLoading(false);
-    }
+    await toggleLikeMutation.mutateAsync();
   };
 
   return (
@@ -48,7 +42,7 @@ export default function LikeButton({
         variant={liked ? "default" : "secondary"}
         size="sm"
         onClick={handleToggle}
-        disabled={loading}
+        disabled={toggleLikeMutation.isPending}
       >
         {liked ? "已点赞" : "点赞"}
       </Button>

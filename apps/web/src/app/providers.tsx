@@ -1,7 +1,11 @@
 "use client";
 
 import * as Sentry from "@sentry/nextjs";
-import { QueryClientProvider } from "@tanstack/react-query";
+import {
+  QueryClientProvider,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { ReactNode, useEffect, useState } from "react";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useUserStore } from "@/stores/userStore";
@@ -11,23 +15,36 @@ import { createAppQueryClient } from "@/lib/queryClient";
 import { queryKeys } from "@/lib/queryKeys";
 
 export default function Providers({ children }: { children: ReactNode }) {
-  const hydrate = useUserStore((state) => state.hydrate);
-  const setUser = useUserStore((state) => state.setUser);
-  const user = useUserStore((state) => state.user);
   const [client] = useState(createAppQueryClient);
 
+  return (
+    <QueryClientProvider client={client}>
+      <AppBootstrap>{children}</AppBootstrap>
+      {process.env.NODE_ENV === "development" ? (
+        <ReactQueryDevtools initialIsOpen={false} />
+      ) : null}
+    </QueryClientProvider>
+  );
+}
+
+function AppBootstrap({ children }: { children: ReactNode }) {
+  const setHydrated = useUserStore((state) => state.setHydrated);
+  const queryClient = useQueryClient();
+  const userQuery = useQuery({
+    queryKey: queryKeys.auth.me(),
+    queryFn: () => fetchMe({ errorToast: false, suppressUnauthorized: true }),
+    retry: false,
+    staleTime: 5 * 60_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+  });
+  const user = userQuery.data?.data ?? null;
+
   useEffect(() => {
-    fetchMe({ errorToast: false })
-      .then((result) => {
-        setUser(result.data);
-        client.setQueryData(queryKeys.auth.me(), result);
-      })
-      .catch(() => {
-        setUser(null);
-        client.removeQueries({ queryKey: queryKeys.auth.me() });
-      })
-      .finally(() => hydrate());
-  }, [client, hydrate, setUser]);
+    if (userQuery.isFetched || userQuery.isError) {
+      setHydrated(true);
+    }
+  }, [setHydrated, userQuery.isError, userQuery.isFetched]);
 
   useEffect(() => {
     if (user) {
@@ -46,19 +63,14 @@ export default function Providers({ children }: { children: ReactNode }) {
       };
     }
 
-    client.removeQueries({ queryKey: queryKeys.messages.allConversations() });
-    client.removeQueries({ queryKey: queryKeys.messages.all() });
-    client.removeQueries({ queryKey: queryKeys.messages.allSearch() });
+    queryClient.removeQueries({ queryKey: queryKeys.messages.allConversations() });
+    queryClient.removeQueries({ queryKey: queryKeys.messages.all() });
+    queryClient.removeQueries({ queryKey: queryKeys.messages.allSearch() });
     disconnectSocket();
     Sentry.setUser(null);
-  }, [client, user]);
+  }, [queryClient, user]);
 
   return (
-    <QueryClientProvider client={client}>
-      {children}
-      {process.env.NODE_ENV === "development" ? (
-        <ReactQueryDevtools initialIsOpen={false} />
-      ) : null}
-    </QueryClientProvider>
+    <>{children}</>
   );
 }
