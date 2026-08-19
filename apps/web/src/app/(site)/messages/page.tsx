@@ -11,6 +11,7 @@ import {
   appendMessageToThreadCache,
   clearConversationUnread,
   setPresenceInConversationList,
+  syncConversationPreview,
 } from "@/features/messages/messageCache";
 import {
   type MessageItem,
@@ -41,7 +42,7 @@ function MessagesPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const searchRecipientId = searchParams.get("to");
-  const { hydrated, user } = useCurrentUser();
+  const { authBootstrapComplete, user } = useCurrentUser();
   const queryClient = useQueryClient();
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draftRecipientOverride, setDraftRecipientOverride] = useState<string | null>(
@@ -68,10 +69,10 @@ function MessagesPageContent() {
   };
 
   useEffect(() => {
-    if (hydrated && !user) {
+    if (authBootstrapComplete && !user) {
       router.push("/login");
     }
-  }, [hydrated, router, user]);
+  }, [authBootstrapComplete, router, user]);
 
   const conversationsQueryKey = queryKeys.messages.conversations(user?.id);
   const { data: conversations = [] } = useQuery({
@@ -109,7 +110,7 @@ function MessagesPageContent() {
   const sendMessageMutation = useMutation({
     mutationFn: ({ content, recipientId }: { content: string; recipientId: string }) =>
       sendMessage(recipientId, content).then((result) => result.data),
-    onSuccess: (message) => {
+    onSuccess: (message, variables) => {
       setContent("");
       setDraftRecipientOverride(null);
 
@@ -121,7 +122,14 @@ function MessagesPageContent() {
       }
 
       scrollToBottom();
-      queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
+      const synced = syncConversationPreview(queryClient, user?.id, message, {
+        otherUserId: variables.recipientId,
+        otherUsername: activeConversation?.otherUsername,
+        unreadCount: 0,
+      });
+      if (!synced && user) {
+        queryClient.invalidateQueries({ queryKey: conversationsQueryKey });
+      }
     },
   });
 
@@ -217,10 +225,7 @@ function MessagesPageContent() {
   }, [loading, messages.length, selectedConversationId]);
 
   const { data: searchResults = [] } = useQuery({
-    queryKey: queryKeys.messages.search(
-      selectedConversationId ?? "pending",
-      debouncedMessageSearch,
-    ),
+    queryKey: queryKeys.messages.search(selectedConversationId, debouncedMessageSearch),
     queryFn: () =>
       searchMessages(selectedConversationId!, debouncedMessageSearch).then(
         (result) => result.data,
@@ -248,7 +253,7 @@ function MessagesPageContent() {
     return () => window.clearTimeout(handle);
   }, [messageSearch]);
 
-  if (!hydrated || !user) {
+  if (!authBootstrapComplete || !user) {
     return null;
   }
 

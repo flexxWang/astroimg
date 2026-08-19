@@ -4,12 +4,11 @@ import { useEffect, useRef } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import PostCard from "@/features/posts/components/PostCard";
 import {
-  fetchPostsByUserPage,
-  fetchPostsPage,
-  type PostListItem,
-} from "@/features/posts/services/postApi";
+  DEFAULT_POST_FEED_PAGE_SIZE,
+  postFeedQueryOptions,
+} from "@/features/posts/queries/postFeedQuery";
+import { type PostListItem } from "@/features/posts/services/postApi";
 import type { Paginated } from "@/lib/types";
-import { queryKeys } from "@/lib/queryKeys";
 
 interface PostFeedProps {
   initialPage?: Paginated<PostListItem>;
@@ -21,51 +20,29 @@ interface PostFeedProps {
 
 export default function PostFeed({
   initialPage,
-  pageSize = 10,
+  pageSize = DEFAULT_POST_FEED_PAGE_SIZE,
   emptyText = "还没有内容。",
   keyword,
   userId,
 }: PostFeedProps) {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const fetchingRef = useRef(false);
-
-  const isUserFeed = Boolean(userId);
-  const seedPage: Paginated<PostListItem> =
-    initialPage ?? {
-      items: [],
-      page: 1,
-      pageSize,
-      total: 0,
-      hasMore: false,
-    };
   const {
     data,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
     isFetching,
-  } = useInfiniteQuery({
-    queryKey: queryKeys.posts.feed({
-      userId,
-      pageSize,
-      keyword,
-    }),
-    queryFn: ({ pageParam = 1 }) => {
-      if (isUserFeed && userId) {
-        return fetchPostsByUserPage(userId, pageParam, pageSize).then(
-          (res) => res.data,
-        );
-      }
-      return fetchPostsPage(pageParam, pageSize, keyword).then((res) => res.data);
-    },
-    initialPageParam: 1,
-    initialData: {
-      pages: [seedPage],
-      pageParams: [1],
-    },
-    getNextPageParam: (lastPage) =>
-      lastPage?.hasMore ? lastPage.page + 1 : undefined,
-  });
+  } = useInfiniteQuery(
+    postFeedQueryOptions(
+      {
+        userId,
+        pageSize,
+        keyword,
+      },
+      initialPage,
+    ),
+  );
 
   const posts: PostListItem[] = [];
   const seenIds = new Set<string>();

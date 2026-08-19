@@ -8,7 +8,7 @@ import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
 import { queryKeys } from "@/lib/queryKeys";
 
 export default function NotificationBell() {
-  const { user, hydrated } = useCurrentUser();
+  const { user, authBootstrapComplete } = useCurrentUser();
 
   const { data } = useQuery({
     queryKey: queryKeys.notifications.unread(user?.id),
@@ -17,7 +17,7 @@ export default function NotificationBell() {
     refetchInterval: 30_000,
   });
 
-  if (!hydrated || !user) return null;
+  if (!authBootstrapComplete || !user) return null;
 
   const count = data?.data ?? 0;
 

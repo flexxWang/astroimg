@@ -1,5 +1,9 @@
 import ExploreSearch from "@/features/explore/components/ExploreSearch";
 import PostFeed from "@/features/posts/components/PostFeed";
+import {
+  createEmptyPostFeedPage,
+  DEFAULT_POST_FEED_PAGE_SIZE,
+} from "@/features/posts/queries/postFeedQuery";
 import { serverFetch } from "@/lib/serverApi";
 import type { Paginated, PostListItem } from "@/lib/types";
 
@@ -11,16 +15,10 @@ export default async function ExplorePage({
   const { q } = await searchParams;
   const keyword = typeof q === "string" ? q : "";
   const query = keyword
-    ? `/posts?page=1&pageSize=10&keyword=${encodeURIComponent(keyword)}`
-    : "/posts?page=1&pageSize=10";
+    ? `/posts?page=1&pageSize=${DEFAULT_POST_FEED_PAGE_SIZE}&keyword=${encodeURIComponent(keyword)}`
+    : `/posts?page=1&pageSize=${DEFAULT_POST_FEED_PAGE_SIZE}`;
   const result = await serverFetch<Paginated<PostListItem>>(query);
-  const page = result.data ?? {
-    items: [],
-    page: 1,
-    pageSize: 10,
-    total: 0,
-    hasMore: false,
-  };
+  const page = result.data ?? createEmptyPostFeedPage();
 
   return (
     <div className="space-y-8">
@@ -30,7 +28,7 @@ export default async function ExplorePage({
       </div>
       <PostFeed
         initialPage={page}
-        pageSize={10}
+        pageSize={DEFAULT_POST_FEED_PAGE_SIZE}
         keyword={keyword}
         emptyText="没有匹配内容。"
       />

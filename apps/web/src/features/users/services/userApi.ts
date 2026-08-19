@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/apiClient";
+import type { UserProfile } from "@/lib/types";
 
 type AuthTokens = {
   accessToken: string;
@@ -40,5 +41,11 @@ export function fetchMe(options?: {
     authRedirect: false,
     suppressUnauthorized:
       options?.suppressUnauthorized ?? options?.errorToast === false,
+  });
+}
+
+export function fetchUserProfile(userId: string) {
+  return apiFetch<UserProfile>(`/users/${userId}`, {
+    errorToast: false,
   });
 }

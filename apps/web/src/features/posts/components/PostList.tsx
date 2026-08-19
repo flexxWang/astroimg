@@ -7,7 +7,7 @@ import { queryKeys } from "@/lib/queryKeys";
 
 export default function PostList() {
   const { data, isLoading, isError } = useQuery({
-    queryKey: queryKeys.posts.all(),
+    queryKey: queryKeys.posts.list(),
     queryFn: fetchPosts,
   });
 

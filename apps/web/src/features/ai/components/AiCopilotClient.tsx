@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import ConfirmDialog from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import StreamPlanSections from "@/features/ai/components/StreamPlanSections";
+import { upsertDraftInCache } from "@/features/drafts/draftCache";
 import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
 import { showApiErrorToast } from "@/lib/showApiErrorToast";
 import { queryKeys } from "@/lib/queryKeys";
@@ -53,6 +54,7 @@ export default function AiCopilotClient({
   initialHistoryPage,
 }: AiCopilotClientProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user } = useCurrentUser();
   const [input, setInput] = useState<AiCopilotInput>(defaultInput());
   const [loading, setLoading] = useState(false);
@@ -239,6 +241,7 @@ export default function AiCopilotClient({
         title: plan.title,
         content: buildDraftContent(plan),
       });
+      upsertDraftInCache(queryClient, user?.id, result.data);
       showSuccessToast(
         "草稿已保存",
         "已保存到草稿箱，你可以继续编辑后再发布。",

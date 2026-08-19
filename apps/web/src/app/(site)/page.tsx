@@ -1,5 +1,9 @@
 import Link from "next/link";
 import WorkFeed from "@/features/works/components/WorkFeed";
+import {
+  createEmptyWorkFeedPage,
+  DEFAULT_WORK_FEED_PAGE_SIZE,
+} from "@/features/works/queries/workFeedQuery";
 import LottieBanner from "@/shared/components/LottieBanner";
 import { Button } from "@/components/ui/button";
 import { serverFetch } from "@/lib/serverApi";
@@ -7,15 +11,9 @@ import type { Paginated, WorkItem } from "@/lib/types";
 
 export default async function HomePage() {
   const result = await serverFetch<Paginated<WorkItem>>(
-    "/works?page=1&pageSize=12",
+    `/works?page=1&pageSize=${DEFAULT_WORK_FEED_PAGE_SIZE}`,
   );
-  const page = result.data ?? {
-    items: [],
-    page: 1,
-    pageSize: 12,
-    total: 0,
-    hasMore: false,
-  };
+  const page = result.data ?? createEmptyWorkFeedPage();
 
   return (
     <div className="space-y-10">
@@ -50,7 +48,7 @@ export default async function HomePage() {
           <span className="text-sm text-muted-foreground">社区精选</span>
         </div>
         <div className="mx-auto w-full max-w-7xl px-6 lg:max-w-[1400px]">
-          <WorkFeed initialPage={page} pageSize={12} />
+          <WorkFeed initialPage={page} pageSize={DEFAULT_WORK_FEED_PAGE_SIZE} />
         </div>
       </section>
     </div>

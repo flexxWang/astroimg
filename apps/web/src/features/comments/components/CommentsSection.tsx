@@ -3,6 +3,10 @@
 import { useRouter } from "next/navigation";
 import type { QueryKey } from "@tanstack/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  invalidateCommentRelatedQueries,
+  prependCommentToCache,
+} from "@/features/comments/commentCache";
 import CommentForm from "@/features/comments/components/CommentForm";
 import CommentList from "@/features/comments/components/CommentList";
 import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
@@ -14,6 +18,8 @@ interface CommentsSectionProps<TComment extends BaseComment> {
   emptyText?: string;
   errorFallback?: string;
   initialComments: TComment[];
+  invalidateQueryKey?: QueryKey;
+  onCommentCreated?: (comment: TComment, nextCount: number) => void;
   onCountChange?: (count: number) => void;
   queryFn: () => Promise<TComment[]>;
   queryKey: QueryKey;
@@ -25,6 +31,8 @@ export default function CommentsSection<TComment extends BaseComment>({
   emptyText = "暂无评论",
   errorFallback = "评论失败，请稍后再试。",
   initialComments,
+  invalidateQueryKey,
+  onCommentCreated,
   onCountChange,
   queryFn,
   queryKey,
@@ -43,11 +51,14 @@ export default function CommentsSection<TComment extends BaseComment>({
   const createCommentMutation = useMutation({
     mutationFn: createComment,
     onSuccess: (comment) => {
-      queryClient.setQueryData<TComment[]>(queryKey, (current = []) => {
-        const nextComments = [comment, ...current];
-        onCountChange?.(nextComments.length);
-        return nextComments;
-      });
+      const nextCount = prependCommentToCache(
+        queryClient,
+        queryKey,
+        comment,
+        onCountChange,
+      );
+      onCommentCreated?.(comment, nextCount);
+      invalidateCommentRelatedQueries(queryClient, invalidateQueryKey);
     },
   });
 

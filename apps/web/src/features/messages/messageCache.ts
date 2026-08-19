@@ -34,6 +34,67 @@ export function appendMessageToThreadCache(
   });
 }
 
+export function syncConversationPreview(
+  queryClient: QueryClient,
+  userId: string | undefined,
+  message: MessageItem,
+  options?: {
+    otherUserId?: string;
+    otherUsername?: string;
+    unreadCount?: number;
+  },
+) {
+  let updated = false;
+
+  queryClient.setQueryData<ConversationItem[] | undefined>(
+    queryKeys.messages.conversations(userId),
+    (current) => {
+      if (!current) {
+        return current;
+      }
+
+      const existingIndex = current.findIndex(
+        (conversation) => conversation.id === message.conversationId,
+      );
+
+      if (existingIndex >= 0) {
+        updated = true;
+        const existing = current[existingIndex];
+        const nextConversation: ConversationItem = {
+          ...existing,
+          lastMessage: message.content,
+          unreadCount: options?.unreadCount ?? existing.unreadCount ?? 0,
+          updatedAt: message.createdAt ?? existing.updatedAt,
+        };
+
+        return [
+          nextConversation,
+          ...current.filter((conversation) => conversation.id !== message.conversationId),
+        ];
+      }
+
+      if (!options?.otherUserId || !options?.otherUsername) {
+        return current;
+      }
+
+      updated = true;
+      return [
+        {
+          id: message.conversationId,
+          lastMessage: message.content,
+          otherUserId: options.otherUserId,
+          otherUsername: options.otherUsername,
+          unreadCount: options.unreadCount ?? 0,
+          updatedAt: message.createdAt,
+        },
+        ...current,
+      ];
+    },
+  );
+
+  return updated;
+}
+
 export function clearConversationUnread(
   queryClient: QueryClient,
   userId: string | undefined,

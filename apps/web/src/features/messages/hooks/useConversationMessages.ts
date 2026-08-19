@@ -16,7 +16,7 @@ const MESSAGE_PAGE_SIZE = 20;
 
 export function useConversationMessages(conversationId: string | null) {
   const queryClient = useQueryClient();
-  const queryKey = queryKeys.messages.thread(conversationId ?? "pending");
+  const queryKey = queryKeys.messages.thread(conversationId);
   const query = useInfiniteQuery<
     MessageItem[],
     Error,

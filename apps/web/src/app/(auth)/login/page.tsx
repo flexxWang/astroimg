@@ -7,9 +7,9 @@ import Link from "next/link";
 import { Space_Grotesk } from "next/font/google";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { queryKeys } from "@/lib/queryKeys";
 import { showErrorToast } from "@/lib/showToastMessage";
-import { fetchMe, login } from "@/features/users/services/userApi";
+import { refreshCurrentUser } from "@/features/users/queries/currentUserQuery";
+import { login } from "@/features/users/services/userApi";
 import { useToast } from "@/hooks/useToast";
 
 const spaceGrotesk = Space_Grotesk({
@@ -36,8 +36,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login({ usernameOrEmail, password });
-      const me = await fetchMe({ suppressUnauthorized: true });
-      queryClient.setQueryData(queryKeys.auth.me(), me);
+      await refreshCurrentUser(queryClient);
       router.push("/");
     } catch {
     } finally {

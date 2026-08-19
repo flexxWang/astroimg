@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { removeDraftFromCache } from "@/features/drafts/draftCache";
 import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
 import { fetchDrafts, publishDraft } from "@/features/drafts/services/draftApi";
 import { excerpt } from "@/lib/format";
@@ -18,7 +19,8 @@ import {
 
 export default function DraftListPage() {
   const router = useRouter();
-  const { hydrated, user } = useCurrentUser();
+  const { authBootstrapComplete, user } = useCurrentUser();
+  const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: queryKeys.drafts.list(user?.id),
@@ -29,12 +31,12 @@ export default function DraftListPage() {
   });
 
   useEffect(() => {
-    if (hydrated && !user) {
+    if (authBootstrapComplete && !user) {
       router.push("/login");
     }
-  }, [hydrated, router, user]);
+  }, [authBootstrapComplete, router, user]);
 
-  if (!hydrated || !user) {
+  if (!authBootstrapComplete || !user) {
     return null;
   }
 
@@ -43,6 +45,7 @@ export default function DraftListPage() {
   const handlePublish = async (id: string) => {
     try {
       const result = await publishDraft(id);
+      removeDraftFromCache(queryClient, user?.id, id);
       router.push(`/post/${result.data.id}`);
     } catch {}
   };

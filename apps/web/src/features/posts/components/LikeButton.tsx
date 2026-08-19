@@ -1,7 +1,8 @@
 "use client";
 
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import { syncPostLikeState } from "@/features/posts/postCache";
 import { fetchLikeStatus, toggleLike } from "@/features/posts/services/likeApi";
 import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
 import { Button } from "@/components/ui/button";
@@ -15,14 +16,19 @@ export default function LikeButton({
   initialCount?: number;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user } = useCurrentUser();
+  const likeStatusQueryKey = queryKeys.posts.likeStatus(postId);
   const { data: likeStatus } = useQuery({
-    queryKey: queryKeys.posts.likeStatus(postId),
+    queryKey: likeStatusQueryKey,
     queryFn: () => fetchLikeStatus(postId).then((result) => result.data),
     enabled: Boolean(user),
   });
   const toggleLikeMutation = useMutation({
     mutationFn: () => toggleLike(postId).then((result) => result.data),
+    onSuccess: (result) => {
+      syncPostLikeState(queryClient, postId, result.liked, result.likeCount);
+    },
   });
   const liked = likeStatus?.liked ?? false;
   const count = toggleLikeMutation.data?.likeCount ?? initialCount;

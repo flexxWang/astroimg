@@ -1,11 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
+import {
+  removeDraftFromCache,
+  upsertDraftInCache,
+} from "@/features/drafts/draftCache";
 import PostEditor from "@/features/posts/components/PostEditor";
 import { createPost } from "@/features/posts/services/postApi";
 import {
@@ -18,6 +23,7 @@ import { showErrorToast, showSuccessToast } from "@/lib/showToastMessage";
 
 export default function CreatePostPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user } = useCurrentUser();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -56,6 +62,7 @@ export default function CreatePostPage() {
     try {
       if (draftId) {
         const result = await publishDraft(draftId);
+        removeDraftFromCache(queryClient, user?.id, draftId);
         router.push(`/post/${result.data.id}`);
       } else {
         const result = await createPost({ title, content });
@@ -75,10 +82,12 @@ export default function CreatePostPage() {
     setLoading(true);
     try {
       if (draftId) {
-        await updateDraft(draftId, { title, content });
+        const result = await updateDraft(draftId, { title, content });
+        upsertDraftInCache(queryClient, user?.id, result.data);
       } else {
         const result = await createDraft({ title, content });
         setDraftId(result.data.id);
+        upsertDraftInCache(queryClient, user?.id, result.data);
       }
       lastSavedRef.current = { title, content };
       showSuccessToast("草稿已保存");

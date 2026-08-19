@@ -1,69 +1,102 @@
+const QUERY_KEY_FALLBACK = {
+  guest: "guest",
+  pending: "pending",
+} as const;
+
 export const queryKeys = {
   auth: {
     me: () => ["auth", "me"] as const,
   },
   ai: {
-    history: () => ["ai-copilot-history"] as const,
+    all: () => ["ai"] as const,
+    history: () => [...queryKeys.ai.all(), "history"] as const,
   },
   posts: {
     all: () => ["posts"] as const,
-    likeStatus: (postId: string) => ["posts", "likes", postId, "me"] as const,
+    list: () => [...queryKeys.posts.all(), "list"] as const,
     feed: (params?: {
       userId?: string;
       pageSize?: number;
       keyword?: string;
     }) =>
       [
-        "posts",
+        ...queryKeys.posts.all(),
         "feed",
         params?.userId ?? "all",
         params?.pageSize ?? 10,
         params?.keyword ?? "",
       ] as const,
-    detail: (postId: string) => ["posts", "detail", postId] as const,
-    comments: (postId: string) =>
-      ["posts", "detail", postId, "comments"] as const,
+    detail: (postId: string) => [...queryKeys.posts.all(), "detail", postId] as const,
+    comments: (postId: string) => [...queryKeys.posts.detail(postId), "comments"] as const,
+    likeStatus: (postId: string) =>
+      [...queryKeys.posts.detail(postId), "likes", "me"] as const,
   },
   works: {
     all: () => ["works"] as const,
+    list: () => [...queryKeys.works.all(), "list"] as const,
     feed: (params?: { userId?: string; pageSize?: number }) =>
-      ["works", "feed", params?.userId ?? "all", params?.pageSize ?? 12] as const,
-    detail: (workId: string) => ["works", "detail", workId] as const,
-    comments: (workId: string) =>
-      ["works", "detail", workId, "comments"] as const,
-    likeStatus: (workId: string) => ["works", "likes", workId, "me"] as const,
-    types: () => ["works", "types"] as const,
-    devices: () => ["works", "devices"] as const,
+      [
+        ...queryKeys.works.all(),
+        "feed",
+        params?.userId ?? "all",
+        params?.pageSize ?? 12,
+      ] as const,
+    detail: (workId: string) => [...queryKeys.works.all(), "detail", workId] as const,
+    comments: (workId: string) => [...queryKeys.works.detail(workId), "comments"] as const,
+    likeStatus: (workId: string) =>
+      [...queryKeys.works.detail(workId), "likes", "me"] as const,
+    types: () => [...queryKeys.works.all(), "types"] as const,
+    devices: () => [...queryKeys.works.all(), "devices"] as const,
   },
   notifications: {
-    list: () => ["notifications", "list"] as const,
-    unread: (userId?: string) =>
-      ["notifications", "unread", userId ?? "guest"] as const,
+    all: () => ["notifications"] as const,
+    list: () => [...queryKeys.notifications.all(), "list"] as const,
+    unread: (userId?: string | null) =>
+      [
+        ...queryKeys.notifications.all(),
+        "unread",
+        userId ?? QUERY_KEY_FALLBACK.guest,
+      ] as const,
   },
   messages: {
     all: () => ["messages"] as const,
-    allConversations: () => ["conversations"] as const,
-    allSearch: () => ["messages-search"] as const,
-    conversations: (userId?: string) =>
-      ["conversations", userId ?? "guest"] as const,
-    thread: (conversationId: string) =>
-      ["messages", conversationId] as const,
-    search: (conversationId: string, keyword: string) =>
-      ["messages-search", conversationId, keyword] as const,
+    conversations: (userId?: string | null) =>
+      [
+        ...queryKeys.messages.all(),
+        "conversations",
+        userId ?? QUERY_KEY_FALLBACK.guest,
+      ] as const,
+    thread: (conversationId?: string | null) =>
+      [
+        ...queryKeys.messages.all(),
+        "thread",
+        conversationId ?? QUERY_KEY_FALLBACK.pending,
+      ] as const,
+    search: (conversationId?: string | null, keyword?: string) =>
+      [
+        ...queryKeys.messages.all(),
+        "search",
+        conversationId ?? QUERY_KEY_FALLBACK.pending,
+        keyword ?? "",
+      ] as const,
   },
   users: {
-    allSearch: () => ["user-search"] as const,
-    search: (keyword: string) => ["user-search", keyword] as const,
-    profile: (userId: string) => ["users", "profile", userId] as const,
+    all: () => ["users"] as const,
+    searchRoot: () => [...queryKeys.users.all(), "search"] as const,
+    search: (keyword: string) => [...queryKeys.users.searchRoot(), keyword] as const,
+    profile: (userId: string) => [...queryKeys.users.all(), "profile", userId] as const,
   },
   follows: {
     status: (userId: string) => ["follows", "status", userId] as const,
   },
   drafts: {
-    list: (userId?: string) => ["drafts", userId ?? "guest"] as const,
-    detail: (draftId: string) => ["drafts", "detail", draftId] as const,
+    all: () => ["drafts"] as const,
+    list: (userId?: string | null) =>
+      [...queryKeys.drafts.all(), "list", userId ?? QUERY_KEY_FALLBACK.guest] as const,
+    detail: (draftId: string) => [...queryKeys.drafts.all(), "detail", draftId] as const,
   },
   observations: {
-    points: () => ["observation-points"] as const,
+    all: () => ["observations"] as const,
+    points: () => [...queryKeys.observations.all(), "points"] as const,
   },
 };

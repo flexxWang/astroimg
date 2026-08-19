@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
+  markAllNotificationsAsReadInCache,
+  markNotificationAsReadInCache,
+} from "@/features/notifications/notificationCache";
+import {
   fetchNotifications,
   markAllRead,
   markNotificationRead,
@@ -28,28 +32,13 @@ export default function NotificationList({
   const markReadMutation = useMutation({
     mutationFn: (id: string) => markNotificationRead(id).then((result) => result.data),
     onSuccess: (updatedItem) => {
-      queryClient.setQueryData<NotificationItem[]>(
-        queryKeys.notifications.list(),
-        (current = []) =>
-          current.map((item) =>
-            item.id === updatedItem.id ? { ...item, read: true } : item,
-          ),
-      );
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.notifications.unread(user?.id),
-      });
+      markNotificationAsReadInCache(queryClient, user?.id, updatedItem.id);
     },
   });
   const markAllReadMutation = useMutation({
     mutationFn: () => markAllRead(),
     onSuccess: () => {
-      queryClient.setQueryData<NotificationItem[]>(
-        queryKeys.notifications.list(),
-        (current = []) => current.map((item) => ({ ...item, read: true })),
-      );
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.notifications.unread(user?.id),
-      });
+      markAllNotificationsAsReadInCache(queryClient, user?.id);
     },
   });
 

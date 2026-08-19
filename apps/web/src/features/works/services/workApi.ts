@@ -7,6 +7,10 @@ export function fetchWorksPage(page = 1, pageSize = 20) {
   );
 }
 
+export function fetchWork(workId: string) {
+  return apiFetch<WorkItem>(`/works/${workId}`);
+}
+
 export function fetchWorkTypes() {
   return apiFetch<WorkType[]>("/works/types");
 }

@@ -1,12 +1,14 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams, useRouter } from "next/navigation";
+import { syncConversationPreview } from "@/features/messages/messageCache";
 import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
 import { sendMessage } from "@/features/messages/services/messageApi";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { queryKeys } from "@/lib/queryKeys";
 
 export default function NewMessagePage() {
   return (
@@ -18,25 +20,35 @@ export default function NewMessagePage() {
 
 function NewMessageContent() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const params = useSearchParams();
   const recipientId = params.get("to") || "";
-  const { hydrated, user } = useCurrentUser();
+  const { authBootstrapComplete, user } = useCurrentUser();
   const [content, setContent] = useState("");
   const sendMessageMutation = useMutation({
     mutationFn: (messageContent: string) =>
       sendMessage(recipientId, messageContent).then((result) => result.data),
     onSuccess: (message) => {
+      const synced = syncConversationPreview(queryClient, user?.id, message, {
+        otherUserId: recipientId,
+        unreadCount: 0,
+      });
+      if (!synced && user) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.messages.conversations(user.id),
+        });
+      }
       router.push(`/messages/${message.conversationId}`);
     },
   });
 
   useEffect(() => {
-    if (hydrated && !user) {
+    if (authBootstrapComplete && !user) {
       router.push("/login");
     }
-  }, [hydrated, router, user]);
+  }, [authBootstrapComplete, router, user]);
 
-  if (!hydrated || !user) return null;
+  if (!authBootstrapComplete || !user) return null;
 
   const handleSend = async () => {
     if (!recipientId || !content.trim()) return;

@@ -1,22 +1,28 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { syncFollowState } from "@/features/follows/followCache";
 import { fetchFollowStatus, toggleFollow } from "@/features/follows/services/followApi";
 import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
 import { queryKeys } from "@/lib/queryKeys";
 
 export default function FollowButton({ userId }: { userId: string }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user } = useCurrentUser();
+  const followStatusQueryKey = queryKeys.follows.status(userId);
   const { data: followStatus } = useQuery({
-    queryKey: queryKeys.follows.status(userId),
+    queryKey: followStatusQueryKey,
     queryFn: () => fetchFollowStatus(userId).then((result) => result.data),
     enabled: Boolean(user),
   });
   const toggleFollowMutation = useMutation({
     mutationFn: () => toggleFollow(userId).then((result) => result.data),
+    onSuccess: (result) => {
+      syncFollowState(queryClient, userId, result.following);
+    },
   });
   const following = toggleFollowMutation.data?.following ?? followStatus?.following ?? false;
 

@@ -8,11 +8,11 @@ import {
 } from "@tanstack/react-query";
 import { ReactNode, useEffect, useState } from "react";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { useUserStore } from "@/stores/userStore";
-import { fetchMe } from "@/features/users/services/userApi";
+import { currentUserQueryOptions } from "@/features/users/queries/currentUserQuery";
 import { disconnectSocket, getSocket } from "@/lib/socket";
 import { createAppQueryClient } from "@/lib/queryClient";
 import { queryKeys } from "@/lib/queryKeys";
+import { useSessionStore } from "@/stores/sessionStore";
 
 export default function Providers({ children }: { children: ReactNode }) {
   const [client] = useState(createAppQueryClient);
@@ -28,23 +28,18 @@ export default function Providers({ children }: { children: ReactNode }) {
 }
 
 function AppBootstrap({ children }: { children: ReactNode }) {
-  const setHydrated = useUserStore((state) => state.setHydrated);
+  const setAuthBootstrapComplete = useSessionStore(
+    (state) => state.setAuthBootstrapComplete,
+  );
   const queryClient = useQueryClient();
-  const userQuery = useQuery({
-    queryKey: queryKeys.auth.me(),
-    queryFn: () => fetchMe({ errorToast: false, suppressUnauthorized: true }),
-    retry: false,
-    staleTime: 5 * 60_000,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-  });
+  const userQuery = useQuery(currentUserQueryOptions());
   const user = userQuery.data?.data ?? null;
 
   useEffect(() => {
     if (userQuery.isFetched || userQuery.isError) {
-      setHydrated(true);
+      setAuthBootstrapComplete(true);
     }
-  }, [setHydrated, userQuery.isError, userQuery.isFetched]);
+  }, [setAuthBootstrapComplete, userQuery.isError, userQuery.isFetched]);
 
   useEffect(() => {
     if (user) {
@@ -63,9 +58,7 @@ function AppBootstrap({ children }: { children: ReactNode }) {
       };
     }
 
-    queryClient.removeQueries({ queryKey: queryKeys.messages.allConversations() });
     queryClient.removeQueries({ queryKey: queryKeys.messages.all() });
-    queryClient.removeQueries({ queryKey: queryKeys.messages.allSearch() });
     disconnectSocket();
     Sentry.setUser(null);
   }, [queryClient, user]);

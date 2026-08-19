@@ -8,24 +8,28 @@ import {
   sendMessage,
 } from "@/features/messages/services/messageApi";
 import { useConversationMessages } from "@/features/messages/hooks/useConversationMessages";
-import { appendMessageToThreadCache } from "@/features/messages/messageCache";
+import {
+  appendMessageToThreadCache,
+  syncConversationPreview,
+} from "@/features/messages/messageCache";
 import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { queryKeys } from "@/lib/queryKeys";
 
 export default function MessageThreadPage() {
   const params = useParams();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { hydrated, user } = useCurrentUser();
+  const { authBootstrapComplete, user } = useCurrentUser();
   const [content, setContent] = useState("");
   const conversationId = params.id as string;
 
   useEffect(() => {
-    if (hydrated && !user) {
+    if (authBootstrapComplete && !user) {
       router.push("/login");
     }
-  }, [hydrated, router, user]);
+  }, [authBootstrapComplete, router, user]);
 
   const { loading, messages } = useConversationMessages(conversationId);
   const sendMessageMutation = useMutation({
@@ -34,6 +38,15 @@ export default function MessageThreadPage() {
     onSuccess: (message) => {
       setContent("");
       appendMessageToThreadCache(queryClient, message.conversationId, message);
+      const synced = syncConversationPreview(queryClient, user?.id, message, {
+        otherUserId: recipientId ?? undefined,
+        unreadCount: 0,
+      });
+      if (!synced && user) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.messages.conversations(user.id),
+        });
+      }
     },
   });
 
@@ -49,7 +62,7 @@ export default function MessageThreadPage() {
     return first.senderId === user.id ? first.recipientId : first.senderId;
   }, [messages, user]);
 
-  if (!hydrated || !user) return null;
+  if (!authBootstrapComplete || !user) return null;
 
   const handleSend = async () => {
     if (!recipientId || !content.trim()) return;
