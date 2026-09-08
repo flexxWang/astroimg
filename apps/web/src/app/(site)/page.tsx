@@ -10,10 +10,11 @@ import { serverFetch } from "@/lib/serverApi";
 import type { Paginated, WorkItem } from "@/lib/types";
 
 export default async function HomePage() {
-  const result = await serverFetch<Paginated<WorkItem>>(
+  const page = await serverFetch<Paginated<WorkItem>>(
     `/works?page=1&pageSize=${DEFAULT_WORK_FEED_PAGE_SIZE}`,
-  );
-  const page = result.data ?? createEmptyWorkFeedPage();
+  )
+    .then((result) => result.data ?? createEmptyWorkFeedPage())
+    .catch(() => createEmptyWorkFeedPage());
 
   return (
     <div className="space-y-10">

@@ -18,6 +18,8 @@ function parseContentTypes(value: string | undefined) {
     'image/webp',
     'image/gif',
     'image/tiff',
+    'video/mp4',
+    'video/quicktime',
     'application/fits',
     'application/x-fits',
   ];

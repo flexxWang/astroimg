@@ -50,7 +50,7 @@ services:
       MINIO_BUCKET: ${MINIO_BUCKET:-astroimg}
       MINIO_USE_SSL: ${MINIO_USE_SSL:-false}
       MINIO_PUBLIC_URL: ${MINIO_PUBLIC_URL:-http://localhost:9000}
-      UPLOAD_ALLOWED_CONTENT_TYPES: ${BACKEND_UPLOAD_ALLOWED_CONTENT_TYPES:-image/jpeg,image/png,image/webp,image/gif,image/tiff,application/fits,application/x-fits}
+      UPLOAD_ALLOWED_CONTENT_TYPES: ${BACKEND_UPLOAD_ALLOWED_CONTENT_TYPES:-image/jpeg,image/png,image/webp,image/gif,image/tiff,video/mp4,video/quicktime,application/fits,application/x-fits}
       UPLOAD_MAX_BYTES: ${BACKEND_UPLOAD_MAX_BYTES:-52428800}
       UPLOAD_PRESIGN_TTL_SECONDS: ${BACKEND_UPLOAD_PRESIGN_TTL_SECONDS:-600}
       AI_PROVIDER: ${AI_PROVIDER:-openrouter}
@@ -82,6 +82,7 @@ services:
         SENTRY_AUTH_TOKEN: ${WEB_SENTRY_AUTH_TOKEN:-}
         SENTRY_ORG: ${WEB_SENTRY_ORG:-}
         SENTRY_PROJECT: ${WEB_SENTRY_PROJECT:-}
+        NEXT_PUBLIC_UPLOAD_MAX_BYTES: ${WEB_PUBLIC_UPLOAD_MAX_BYTES:-52428800}
     container_name: astroimg-web
     restart: unless-stopped
     depends_on:
@@ -92,6 +93,7 @@ services:
       API_BASE: http://backend:4000
       NEXT_PUBLIC_API_BASE: ${WEB_PUBLIC_API_BASE:-http://localhost:4000}
       NEXT_PUBLIC_SOCKET_BASE: ${WEB_PUBLIC_SOCKET_BASE:-http://localhost:4000}
+      NEXT_PUBLIC_UPLOAD_MAX_BYTES: ${WEB_PUBLIC_UPLOAD_MAX_BYTES:-52428800}
       NEXT_PUBLIC_SENTRY_ENABLED: ${WEB_SENTRY_ENABLED:-false}
       NEXT_PUBLIC_SENTRY_DSN: ${WEB_SENTRY_DSN:-}
       NEXT_PUBLIC_SENTRY_ENVIRONMENT: ${WEB_SENTRY_ENVIRONMENT:-production}

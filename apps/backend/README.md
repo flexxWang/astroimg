@@ -105,7 +105,9 @@ pnpm --filter @astroimg/backend migration:run
 - Set `COOKIE_SECURE=true` behind HTTPS.
 - Keep real production secrets in the deployment platform secret manager; use
   `apps/backend/env.production.example` as the committed template only.
-- Upload signing requires `contentType` and `fileSize`; tune
+- Upload signing requires `contentType`; clients should also send `fileSize`
+  for early rejection, while the storage policy still enforces the server-side
+  size limit. Tune
   `UPLOAD_ALLOWED_CONTENT_TYPES`, `UPLOAD_MAX_BYTES`, and
   `UPLOAD_PRESIGN_TTL_SECONDS` per environment.
 - Health endpoints:

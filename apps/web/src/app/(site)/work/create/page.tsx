@@ -19,6 +19,18 @@ import { showApiErrorToast } from "@/lib/showApiErrorToast";
 import { queryKeys } from "@/lib/queryKeys";
 import { showErrorToast, showSuccessToast } from "@/lib/showToastMessage";
 
+const DEFAULT_UPLOAD_MAX_BYTES = 50 * 1024 * 1024;
+const UPLOAD_MAX_BYTES = Number(
+  process.env.NEXT_PUBLIC_UPLOAD_MAX_BYTES || DEFAULT_UPLOAD_MAX_BYTES,
+);
+
+function formatFileSize(bytes: number) {
+  if (bytes >= 1024 * 1024 * 1024) {
+    return `${Math.round(bytes / 1024 / 1024 / 1024)}GB`;
+  }
+  return `${Math.round(bytes / 1024 / 1024)}MB`;
+}
+
 export default function CreateWorkPage() {
   const router = useRouter();
   const { user } = useCurrentUser();
@@ -100,13 +112,23 @@ export default function CreateWorkPage() {
         showErrorToast("图片数量过多", "最多上传 9 张图片。");
         return;
       }
+      const oversizedFile = validFiles.find(
+        (file) => file.size > UPLOAD_MAX_BYTES,
+      );
+      if (oversizedFile) {
+        showErrorToast(
+          "图片过大",
+          `单个文件不能超过 ${formatFileSize(UPLOAD_MAX_BYTES)}。`,
+        );
+        return;
+      }
       setUploading(true);
       setMediaType("image");
       try {
         const uploaded: string[] = [];
         for (const file of validFiles) {
-          const sign = await signUpload(file.name, file.type);
-          await uploadFile(sign.data.uploadUrl, file);
+          const sign = await signUpload(file.name, file.type, file.size);
+          await uploadFile(sign.data, file);
           uploaded.push(sign.data.fileUrl);
         }
         setImageUrls((prev) => [...prev, ...uploaded]);
@@ -133,16 +155,19 @@ export default function CreateWorkPage() {
       showErrorToast("格式不支持", "仅支持 mp4 / mov。");
       return;
     }
-    if (file.size > 1024 * 1024 * 1024) {
-      showErrorToast("视频过大", "视频大小不能超过 1GB。");
+    if (file.size > UPLOAD_MAX_BYTES) {
+      showErrorToast(
+        "视频过大",
+        `单个文件不能超过 ${formatFileSize(UPLOAD_MAX_BYTES)}。`,
+      );
       return;
     }
     setUploading(true);
     setMediaType("video");
     try {
       await validateVideoDuration(file);
-      const sign = await signUpload(file.name, file.type);
-      await uploadFile(sign.data.uploadUrl, file);
+      const sign = await signUpload(file.name, file.type, file.size);
+      await uploadFile(sign.data, file);
       setVideoUrl(sign.data.fileUrl);
       showSuccessToast("视频已上传");
     } catch (err) {
@@ -190,7 +215,8 @@ export default function CreateWorkPage() {
         <Badge variant="secondary">发布作品</Badge>
         <h1 className="text-2xl font-semibold">展示你的星空影像</h1>
         <p className="text-sm text-muted-foreground">
-          支持图片（最多 9 张）或视频（单个 ≤1GB，≤30 秒），不可混合上传。
+          支持图片（最多 9 张）或视频（单个 ≤
+          {formatFileSize(UPLOAD_MAX_BYTES)}，≤30 秒），不可混合上传。
         </p>
       </div>
       <div className="flex h-full flex-1 flex-col space-y-4 rounded-2xl border bg-white/80 p-6 shadow-sm min-h-0">

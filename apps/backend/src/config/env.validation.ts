@@ -136,7 +136,7 @@ export function validateEnv(env: Record<string, unknown>) {
     UPLOAD_ALLOWED_CONTENT_TYPES: readString(
       env,
       'UPLOAD_ALLOWED_CONTENT_TYPES',
-      'image/jpeg,image/png,image/webp,image/gif,image/tiff,application/fits,application/x-fits',
+      'image/jpeg,image/png,image/webp,image/gif,image/tiff,video/mp4,video/quicktime,application/fits,application/x-fits',
     ),
     UPLOAD_MAX_BYTES: readNumber(env, 'UPLOAD_MAX_BYTES', 50 * 1024 * 1024, {
       min: 1,

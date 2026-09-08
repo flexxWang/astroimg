@@ -1,21 +1,38 @@
 import axios from "axios";
 import { apiFetch } from "@/lib/apiClient";
 
-export function signUpload(filename: string, contentType?: string) {
-  return apiFetch<{ uploadUrl: string; fileUrl: string; objectKey: string }>(
+interface SignedUpload {
+  uploadUrl: string;
+  method: "POST";
+  formData: Record<string, string>;
+  fileUrl: string;
+  objectKey: string;
+  maxUploadBytes: number;
+  expiresInSeconds: number;
+}
+
+export function signUpload(
+  filename: string,
+  contentType: string,
+  fileSize: number,
+) {
+  return apiFetch<SignedUpload>(
     "/uploads/sign",
     {
       method: "POST",
-      body: JSON.stringify({ filename, contentType }),
+      body: JSON.stringify({ filename, contentType, fileSize }),
     },
   );
 }
 
-export async function uploadFile(uploadUrl: string, file: File) {
-  const response = await axios.put(uploadUrl, file, {
-    headers: {
-      "Content-Type": file.type || "application/octet-stream",
-    },
+export async function uploadFile(signedUpload: SignedUpload, file: File) {
+  const formData = new FormData();
+  Object.entries(signedUpload.formData).forEach(([key, value]) => {
+    formData.append(key, value);
+  });
+  formData.append("file", file);
+
+  const response = await axios.post(signedUpload.uploadUrl, formData, {
     validateStatus: () => true,
   });
 

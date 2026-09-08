@@ -12,6 +12,8 @@ const CONTENT_TYPE_EXTENSIONS: Record<string, string[]> = {
   'image/webp': ['.webp'],
   'image/gif': ['.gif'],
   'image/tiff': ['.tif', '.tiff'],
+  'video/mp4': ['.mp4'],
+  'video/quicktime': ['.mov', '.qt'],
   'application/fits': ['.fits', '.fit', '.fts'],
   'application/x-fits': ['.fits', '.fit', '.fts'],
 };
@@ -66,7 +68,7 @@ export class UploadService {
   private assertUploadAllowed(
     filename: string,
     contentType: string,
-    fileSize: number,
+    fileSize?: number,
   ) {
     const normalizedContentType = contentType.trim().toLowerCase();
     const ext = path.extname(filename).toLowerCase();
@@ -86,7 +88,7 @@ export class UploadService {
       );
     }
 
-    if (fileSize > this.maxUploadBytes) {
+    if (fileSize !== undefined && fileSize > this.maxUploadBytes) {
       throw AppException.badRequest(ErrorCode.BAD_REQUEST, '文件大小超过限制', {
         maxUploadBytes: this.maxUploadBytes,
       });
@@ -106,7 +108,7 @@ export class UploadService {
     userId: string,
     filename: string,
     contentType: string,
-    fileSize: number,
+    fileSize?: number,
   ) {
     const normalizedContentType = this.assertUploadAllowed(
       filename,
