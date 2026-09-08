@@ -49,9 +49,17 @@ export default function WorkFeed({
     return () => observer.disconnect();
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
+  if (works.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed bg-white/70 px-6 py-14 text-center text-sm text-muted-foreground">
+        还没有作品，发布第一张星空影像吧。
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="columns-1 gap-3 sm:columns-2 md:columns-3 lg:columns-4 xl:columns-5">
+    <div className="space-y-8">
+      <div className="columns-1 gap-5 sm:columns-2 lg:columns-3 xl:columns-4">
         {works.map((work) => (
           <WorkCard key={work.id} work={work} />
         ))}

@@ -11,6 +11,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
             Astroimg
           </Link>
           <nav className="flex items-center gap-6 text-sm text-muted-foreground">
+            <Link href="/community">社区</Link>
             <Link href="/explore">探索</Link>
             <Link href="/map">地图</Link>
             <Link href="/ai/copilot">AI副驾</Link>
