@@ -237,7 +237,22 @@ const MediaImage = Node.create({
     };
   },
   parseHTML() {
-    return [{ tag: "figure[data-type='image']" }, { tag: "img[src]" }];
+    return [
+      {
+        tag: "figure[data-type='image']",
+        getAttrs: (element) => {
+          if (!(element instanceof HTMLElement)) return false;
+          const image = element.querySelector("img[src]");
+          if (!image) return false;
+          return {
+            src: image.getAttribute("src"),
+            alt: image.getAttribute("alt") ?? "",
+            title: image.getAttribute("title") ?? "",
+          };
+        },
+      },
+      { tag: "img[src]" },
+    ];
   },
   renderHTML({ HTMLAttributes }) {
     const { src, alt, title } = HTMLAttributes;
@@ -407,6 +422,18 @@ function insertBlock(
   editor.chain().focus().insertContent(block).run();
 }
 
+function insertBlocks(
+  editor: Editor,
+  blocks: Parameters<Editor["commands"]["insertContent"]>[0][],
+) {
+  if (blocks.length === 0) return;
+  editor.chain().focus().insertContent(blocks).run();
+}
+
+function formatSelectedFileSize(file: File) {
+  return `${(file.size / 1024 / 1024).toFixed(2)} MB`;
+}
+
 function buildEditableTable(rows: number, cols: number) {
   return {
     type: "editableTable",
@@ -493,7 +520,7 @@ export default function PostEditor({
   const [activeDialog, setActiveDialog] = useState<EditorDialog>(null);
   const [dialogTitleValue, setDialogTitleValue] = useState("");
   const [dialogValue, setDialogValue] = useState("");
-  const [dialogFile, setDialogFile] = useState<File | null>(null);
+  const [dialogFiles, setDialogFiles] = useState<File[]>([]);
   const [tableRows, setTableRows] = useState(4);
   const [tableCols, setTableCols] = useState(3);
   const [dialogLoading, setDialogLoading] = useState(false);
@@ -627,7 +654,7 @@ export default function PostEditor({
       setDialogValue("");
       setDialogTitleValue("");
     }
-    setDialogFile(null);
+    setDialogFiles([]);
     setActiveDialog(dialog);
   };
 
@@ -636,7 +663,7 @@ export default function PostEditor({
     setActiveDialog(null);
     setDialogTitleValue("");
     setDialogValue("");
-    setDialogFile(null);
+    setDialogFiles([]);
   };
 
   const handleSetLink = () => {
@@ -677,24 +704,24 @@ export default function PostEditor({
 
   const handleSubmitVideo = async () => {
     const src = normalizeUrl(dialogValue);
-    if (!dialogFile && !src) return;
+    if (dialogFiles.length === 0 && !src) return;
 
     setDialogLoading(true);
     try {
-      if (dialogFile) {
-        const signed = await signUpload(
-          dialogFile.name,
-          dialogFile.type,
-          dialogFile.size,
-        );
-        await uploadFile(signed.data, dialogFile);
-        insertBlock(editor, {
-          type: "videoEmbed",
-          attrs: {
-            src: signed.data.fileUrl,
-            title: dialogFile.name,
-          },
-        });
+      if (dialogFiles.length > 0) {
+        const blocks: Parameters<Editor["commands"]["insertContent"]>[0][] = [];
+        for (const file of dialogFiles) {
+          const signed = await signUpload(file.name, file.type, file.size);
+          await uploadFile(signed.data, file);
+          blocks.push({
+            type: "videoEmbed",
+            attrs: {
+              src: signed.data.fileUrl,
+              title: file.name,
+            },
+          });
+        }
+        insertBlocks(editor, blocks);
       } else {
         insertBlock(editor, {
           type: "videoEmbed",
@@ -709,24 +736,28 @@ export default function PostEditor({
 
   const handleSubmitAttachment = async () => {
     const href = normalizeUrl(dialogValue);
-    if (!dialogFile && !href) return;
+    if (dialogFiles.length === 0 && !href) return;
 
     setDialogLoading(true);
     try {
-      if (dialogFile) {
-        const signed = await signUpload(
-          dialogFile.name,
-          dialogFile.type || "application/octet-stream",
-          dialogFile.size,
-        );
-        await uploadFile(signed.data, dialogFile);
-        insertBlock(editor, {
-          type: "attachmentBlock",
-          attrs: {
-            href: signed.data.fileUrl,
-            name: dialogFile.name,
-          },
-        });
+      if (dialogFiles.length > 0) {
+        const blocks: Parameters<Editor["commands"]["insertContent"]>[0][] = [];
+        for (const file of dialogFiles) {
+          const signed = await signUpload(
+            file.name,
+            file.type || "application/octet-stream",
+            file.size,
+          );
+          await uploadFile(signed.data, file);
+          blocks.push({
+            type: "attachmentBlock",
+            attrs: {
+              href: signed.data.fileUrl,
+              name: file.name,
+            },
+          });
+        }
+        insertBlocks(editor, blocks);
       } else {
         insertBlock(editor, {
           type: "attachmentBlock",
@@ -763,22 +794,26 @@ export default function PostEditor({
   const handleImageChange = async (
     event: ChangeEvent<HTMLInputElement>,
   ) => {
-    const file = event.target.files?.[0];
+    const files = Array.from(event.target.files ?? []);
     event.target.value = "";
-    if (!file) return;
+    if (files.length === 0) return;
 
     setUploading(true);
     try {
-      const signed = await signUpload(file.name, file.type, file.size);
-      await uploadFile(signed.data, file);
-      insertBlock(editor, {
-        type: "mediaImage",
-        attrs: {
-          src: signed.data.fileUrl,
-          alt: file.name,
-          title: "",
-        },
-      });
+      const blocks: Parameters<Editor["commands"]["insertContent"]>[0][] = [];
+      for (const file of files) {
+        const signed = await signUpload(file.name, file.type, file.size);
+        await uploadFile(signed.data, file);
+        blocks.push({
+          type: "mediaImage",
+          attrs: {
+            src: signed.data.fileUrl,
+            alt: file.name,
+            title: "",
+          },
+        });
+      }
+      insertBlocks(editor, blocks);
     } finally {
       setUploading(false);
     }
@@ -831,6 +866,7 @@ export default function PostEditor({
         ref={fileInputRef}
         type="file"
         accept="image/*"
+        multiple
         className="hidden"
         onChange={handleImageChange}
       />
@@ -1065,25 +1101,33 @@ export default function PostEditor({
                       点击选择视频文件
                     </span>
                     <span className="mt-1 text-xs text-[#8590a6]">
-                      支持本地上传，也可以在下方填写视频链接
+                      支持批量选择本地视频，也可以在下方填写视频链接
                     </span>
                     <input
                       type="file"
                       accept="video/*"
+                      multiple
                       onChange={(event) =>
-                        setDialogFile(event.target.files?.[0] ?? null)
+                        setDialogFiles(Array.from(event.target.files ?? []))
                       }
                       className="sr-only"
                     />
                   </label>
-                  {dialogFile ? (
-                    <div className="rounded-lg border border-[#e7eaf0] bg-white px-4 py-3 text-sm">
-                      <div className="font-medium text-[#1f2329]">
-                        {dialogFile.name}
-                      </div>
-                      <div className="mt-1 text-xs text-[#8590a6]">
-                        {(dialogFile.size / 1024 / 1024).toFixed(2)} MB
-                      </div>
+                  {dialogFiles.length > 0 ? (
+                    <div className="max-h-44 space-y-2 overflow-y-auto rounded-lg border border-[#e7eaf0] bg-white p-3 text-sm">
+                      {dialogFiles.map((file, index) => (
+                        <div
+                          key={`${file.name}-${file.size}-${index}`}
+                          className="flex items-center justify-between gap-3 rounded-md bg-[#f8fafc] px-3 py-2"
+                        >
+                          <div className="min-w-0 font-medium text-[#1f2329]">
+                            <div className="truncate">{file.name}</div>
+                          </div>
+                          <div className="shrink-0 text-xs text-[#8590a6]">
+                            {formatSelectedFileSize(file)}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ) : null}
                   <label className="block space-y-2 text-sm">
@@ -1108,24 +1152,32 @@ export default function PostEditor({
                       点击选择附件文件
                     </span>
                     <span className="mt-1 text-xs text-[#8590a6]">
-                      支持文档、压缩包、数据文件等素材
+                      支持批量选择文档、压缩包、数据文件等素材
                     </span>
                     <input
                       type="file"
+                      multiple
                       onChange={(event) =>
-                        setDialogFile(event.target.files?.[0] ?? null)
+                        setDialogFiles(Array.from(event.target.files ?? []))
                       }
                       className="sr-only"
                     />
                   </label>
-                  {dialogFile ? (
-                    <div className="rounded-lg border border-[#e7eaf0] bg-white px-4 py-3 text-sm">
-                      <div className="font-medium text-[#1f2329]">
-                        {dialogFile.name}
-                      </div>
-                      <div className="mt-1 text-xs text-[#8590a6]">
-                        {(dialogFile.size / 1024 / 1024).toFixed(2)} MB
-                      </div>
+                  {dialogFiles.length > 0 ? (
+                    <div className="max-h-44 space-y-2 overflow-y-auto rounded-lg border border-[#e7eaf0] bg-white p-3 text-sm">
+                      {dialogFiles.map((file, index) => (
+                        <div
+                          key={`${file.name}-${file.size}-${index}`}
+                          className="flex items-center justify-between gap-3 rounded-md bg-[#f8fafc] px-3 py-2"
+                        >
+                          <div className="min-w-0 font-medium text-[#1f2329]">
+                            <div className="truncate">{file.name}</div>
+                          </div>
+                          <div className="shrink-0 text-xs text-[#8590a6]">
+                            {formatSelectedFileSize(file)}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ) : null}
                   <label className="block space-y-2 text-sm">

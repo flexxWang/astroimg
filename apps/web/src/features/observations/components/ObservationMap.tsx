@@ -36,14 +36,14 @@ export default function ObservationMap() {
   const bounds = useMemo(() => L.latLngBounds([-85, -180], [85, 180]), []);
 
   return (
-    <div className="overflow-hidden rounded-2xl border bg-white/80 shadow-sm">
+    <div className="h-[calc(100vh-230px)] overflow-hidden rounded-2xl border bg-white/80 shadow-sm">
       <MapContainer
         center={center}
         zoom={4}
         minZoom={2}
         maxBounds={bounds}
         maxBoundsViscosity={1.0}
-        className="h-[620px] w-full"
+        className="h-full w-full"
         scrollWheelZoom
       >
         <TileLayer
