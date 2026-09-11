@@ -8,6 +8,7 @@ import {
   postFeedQueryOptions,
 } from "@/features/posts/queries/postFeedQuery";
 import { type PostListItem } from "@/features/posts/services/postApi";
+import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
 import type { Paginated } from "@/lib/types";
 
 interface PostFeedProps {
@@ -27,6 +28,7 @@ export default function PostFeed({
 }: PostFeedProps) {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const fetchingRef = useRef(false);
+  const { user } = useCurrentUser();
   const {
     data,
     fetchNextPage,
@@ -95,6 +97,7 @@ export default function PostFeed({
             commentCount={post.commentCount}
             highlight={keyword}
             createdAt={post.createdAt}
+            canEdit={user?.id === post.authorId}
           />
         ))}
       </div>

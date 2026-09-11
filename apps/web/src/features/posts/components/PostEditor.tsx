@@ -213,12 +213,7 @@ function MediaNodeView(props: MediaNodeViewProps) {
         />
       ) : null}
       {kind === "video" ? (
-        <>
-          <video controls src={src} title={label} />
-          <a href={src} target="_blank" rel="noreferrer">
-            {label}
-          </a>
-        </>
+        <video controls src={src} title={attrs.title || "视频"} />
       ) : null}
       {kind === "attachment" ? (
         <a href={src} target="_blank" rel="noreferrer">
@@ -283,11 +278,6 @@ const VideoEmbed = Node.create({
           src: HTMLAttributes.src,
           title: HTMLAttributes.title,
         },
-      ],
-      [
-        "a",
-        { href: HTMLAttributes.src, target: "_blank", rel: "noreferrer" },
-        HTMLAttributes.title || HTMLAttributes.src,
       ],
     ];
   },

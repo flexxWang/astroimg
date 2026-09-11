@@ -6,7 +6,9 @@ import type { CommentItem } from "@/features/comments/services/commentApi";
 import FollowButton from "@/features/follows/components/FollowButton";
 import LikeButton from "@/features/posts/components/LikeButton";
 import PostCommentsSection from "@/features/posts/components/PostCommentsSection";
+import PostEditLink from "@/features/posts/components/PostEditLink";
 import { postDetailQueryOptions } from "@/features/posts/queries/postDetailQuery";
+import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -23,8 +25,10 @@ export default function PostDetailContent({
   postId: string;
 }) {
   const { data } = useQuery(postDetailQueryOptions(postId, initialPost));
+  const { user } = useCurrentUser();
   const post = data ?? initialPost;
   const safeContent = sanitizeHtml(post.content);
+  const isOwner = user?.id === post.authorId;
 
   return (
     <div className="space-y-8">
@@ -46,12 +50,18 @@ export default function PostDetailContent({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <FollowButton userId={post.authorId} />
-            <Link href={`/messages?to=${post.authorId}`}>
-              <Button variant="secondary" size="sm">
-                私信
-              </Button>
-            </Link>
+            {isOwner ? (
+              <PostEditLink postId={post.id} />
+            ) : (
+              <>
+                <FollowButton userId={post.authorId} />
+                <Link href={`/messages?to=${post.authorId}`}>
+                  <Button variant="secondary" size="sm">
+                    私信
+                  </Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </div>

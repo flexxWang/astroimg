@@ -1,3 +1,5 @@
+import { DEFAULT_UPLOAD_ALLOWED_CONTENT_TYPES } from '@/modules/upload/upload-content-types';
+
 const TRUE_VALUES = new Set(['true', '1', 'yes', 'on']);
 const FALSE_VALUES = new Set(['false', '0', 'no', 'off', '']);
 
@@ -136,7 +138,7 @@ export function validateEnv(env: Record<string, unknown>) {
     UPLOAD_ALLOWED_CONTENT_TYPES: readString(
       env,
       'UPLOAD_ALLOWED_CONTENT_TYPES',
-      'image/jpeg,image/png,image/webp,image/gif,image/tiff,video/mp4,video/quicktime,application/fits,application/x-fits,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,text/plain,text/csv,text/markdown,application/json,application/zip,application/x-zip-compressed,application/x-rar-compressed,application/vnd.rar,application/x-7z-compressed,application/octet-stream',
+      DEFAULT_UPLOAD_ALLOWED_CONTENT_TYPES,
     ),
     UPLOAD_MAX_BYTES: readNumber(env, 'UPLOAD_MAX_BYTES', 50 * 1024 * 1024, {
       min: 1,

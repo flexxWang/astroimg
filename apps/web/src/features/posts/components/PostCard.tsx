@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import PostEditLink from "@/features/posts/components/PostEditLink";
 import UserAvatar from "@/shared/components/UserAvatar";
 import { excerpt } from "@/lib/format";
 
@@ -15,6 +16,7 @@ interface PostCardProps {
   commentCount?: number;
   highlight?: string;
   createdAt?: string;
+  canEdit?: boolean;
 }
 
 export default function PostCard({
@@ -28,6 +30,7 @@ export default function PostCard({
   commentCount,
   highlight,
   createdAt,
+  canEdit = false,
 }: PostCardProps) {
   const highlightText = (text: string, keyword?: string) => {
     const value = keyword?.trim();
@@ -61,7 +64,12 @@ export default function PostCard({
             {highlightText(excerpt(raw), highlight)}
           </p>
         </div>
-        {tag ? <Badge variant="secondary">{tag}</Badge> : null}
+        <div className="flex shrink-0 items-center gap-2">
+          {tag ? <Badge variant="secondary">{tag}</Badge> : null}
+          {canEdit ? (
+            <PostEditLink postId={id} />
+          ) : null}
+        </div>
       </CardHeader>
       <CardContent className="flex items-center gap-3 text-sm text-muted-foreground">
         <Link href={`/user/${authorId}`} className="flex items-center gap-2 hover:text-foreground">

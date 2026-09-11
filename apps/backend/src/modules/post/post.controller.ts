@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Post as HttpPost,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -15,6 +16,7 @@ import {
 } from '@nestjs/swagger';
 import { PostService } from './post.service';
 import { CreatePostDto } from './dto/create-post.dto';
+import { UpdatePostDto } from './dto/update-post.dto';
 import { CurrentUser } from '@/common/decorators/current-user.decorator';
 import { KeywordPageQueryDto, PageQueryDto } from '@/common/dto/page-query.dto';
 import { JwtAuthGuard } from '@/common/guards/jwt-auth.guard';
@@ -49,5 +51,18 @@ export class PostController {
   @HttpPost()
   create(@Body() dto: CreatePostDto, @CurrentUser() user: { id: string }) {
     return this.postService.create(user.id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('bearer')
+  @ApiCookieAuth('access_token')
+  @ApiOperation({ summary: '更新本人发布的帖子' })
+  @Put(':id')
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdatePostDto,
+    @CurrentUser() user: { id: string },
+  ) {
+    return this.postService.update(user.id, id, dto);
   }
 }

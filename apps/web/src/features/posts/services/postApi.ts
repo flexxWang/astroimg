@@ -53,3 +53,17 @@ export function createPost(payload: { title: string; content: string }) {
     },
   });
 }
+
+export function updatePost(
+  id: string,
+  payload: { title: string; content: string },
+) {
+  return apiFetch<PostListItem>(`/posts/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(payload),
+    errorToast: {
+      title: "保存失败",
+      fallback: "保存失败，请稍后再试。",
+    },
+  });
+}

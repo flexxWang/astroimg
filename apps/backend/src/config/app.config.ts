@@ -1,4 +1,5 @@
 import { registerAs } from '@nestjs/config';
+import { ALLOWED_UPLOAD_CONTENT_TYPES } from '@/modules/upload/upload-content-types';
 
 function parseOrigins(value: string | undefined) {
   if (!value) {
@@ -12,34 +13,7 @@ function parseOrigins(value: string | undefined) {
 }
 
 function parseContentTypes(value: string | undefined) {
-  const defaults = [
-    'image/jpeg',
-    'image/png',
-    'image/webp',
-    'image/gif',
-    'image/tiff',
-    'video/mp4',
-    'video/quicktime',
-    'application/fits',
-    'application/x-fits',
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-    'text/plain',
-    'text/csv',
-    'text/markdown',
-    'application/json',
-    'application/zip',
-    'application/x-zip-compressed',
-    'application/x-rar-compressed',
-    'application/vnd.rar',
-    'application/x-7z-compressed',
-    'application/octet-stream',
-  ];
+  const defaults = [...ALLOWED_UPLOAD_CONTENT_TYPES];
 
   if (!value) {
     return defaults;

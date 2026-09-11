@@ -3,16 +3,20 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import PostEditor from "@/features/posts/components/PostEditor";
-import { Button } from "@/components/ui/button";
 import {
   removeDraftFromCache,
   upsertDraftInCache,
 } from "@/features/drafts/draftCache";
 import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
-import { fetchDraft, publishDraft, updateDraft } from "@/features/drafts/services/draftApi";
+import {
+  fetchDraft,
+  publishDraft,
+  updateDraft,
+} from "@/features/drafts/services/draftApi";
+import PostWritingPage, {
+  formatSaveState,
+  hasMeaningfulPostContent,
+} from "@/features/posts/components/PostWritingPage";
 import { useToast } from "@/hooks/useToast";
 import { showErrorToast, showSuccessToast } from "@/lib/showToastMessage";
 
@@ -25,6 +29,7 @@ export default function DraftEditPage() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
   const draftId = params.id as string;
 
   useEffect(() => {
@@ -33,6 +38,9 @@ export default function DraftEditPage() {
       .then((result) => {
         setTitle(result.data.title || "");
         setContent(result.data.content || "");
+        setLastSavedAt(
+          result.data.updatedAt ? new Date(result.data.updatedAt) : null,
+        );
       })
       .catch(() => {});
   }, [draftId, user]);
@@ -46,6 +54,7 @@ export default function DraftEditPage() {
     try {
       const result = await updateDraft(draftId, { title, content });
       upsertDraftInCache(queryClient, user?.id, result.data);
+      setLastSavedAt(new Date());
       showSuccessToast("草稿已保存");
     } catch {
     } finally {
@@ -58,7 +67,7 @@ export default function DraftEditPage() {
       router.push("/login");
       return;
     }
-    if (!title.trim() || !content.trim()) {
+    if (!title.trim() || !hasMeaningfulPostContent(content)) {
       if (!hasToast("请补全内容")) {
         showErrorToast("请补全内容", "标题和正文不能为空。");
       }
@@ -66,6 +75,8 @@ export default function DraftEditPage() {
     }
     setLoading(true);
     try {
+      const draft = await updateDraft(draftId, { title, content });
+      upsertDraftInCache(queryClient, user?.id, draft.data);
       const result = await publishDraft(draftId);
       removeDraftFromCache(queryClient, user?.id, draftId);
       router.push(`/post/${result.data.id}`);
@@ -76,27 +87,15 @@ export default function DraftEditPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <Badge variant="secondary">编辑草稿</Badge>
-        <h1 className="text-2xl font-semibold">继续完善你的草稿</h1>
-      </div>
-      <div className="space-y-4 rounded-2xl border bg-white/80 p-6 shadow-sm">
-        <Input
-          placeholder="标题"
-          value={title}
-          onChange={(event) => setTitle(event.target.value)}
-        />
-        <PostEditor onChange={setContent} value={content} />
-        <div className="flex justify-end gap-3">
-          <Button type="button" variant="secondary" onClick={handleSave}>
-            保存草稿
-          </Button>
-          <Button onClick={handlePublish} disabled={loading}>
-            {loading ? "发布中..." : "发布"}
-          </Button>
-        </div>
-      </div>
-    </div>
+    <PostWritingPage
+      title={title}
+      content={content}
+      loading={loading}
+      saveStateText={formatSaveState(lastSavedAt, "尚未保存")}
+      onTitleChange={setTitle}
+      onContentChange={setContent}
+      onSave={handleSave}
+      onPublish={handlePublish}
+    />
   );
 }

@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Post } from './post.entity';
 import { CreatePostDto } from './dto/create-post.dto';
+import { UpdatePostDto } from './dto/update-post.dto';
 import { AppException, ErrorCode } from '@/common/exceptions';
 
 type PostListRow = {
@@ -67,6 +68,26 @@ export class PostService {
       authorId,
     });
     return this.postRepo.save(post);
+  }
+
+  async update(authorId: string, id: string, dto: UpdatePostDto) {
+    const post = await this.postRepo.findOne({ where: { id } });
+    if (!post) {
+      throw AppException.notFound(ErrorCode.POST_NOT_FOUND);
+    }
+    if (post.authorId !== authorId) {
+      throw AppException.forbidden(ErrorCode.FORBIDDEN);
+    }
+
+    if (dto.title !== undefined) {
+      post.title = dto.title;
+    }
+    if (dto.content !== undefined) {
+      post.content = dto.content;
+    }
+
+    await this.postRepo.save(post);
+    return this.findById(id);
   }
 
   private applyKeyword(

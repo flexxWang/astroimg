@@ -7,6 +7,7 @@ import {
   Min,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ALLOWED_UPLOAD_CONTENT_TYPES } from '../upload-content-types';
 
 export class SignUploadDto {
   @ApiProperty({
@@ -23,17 +24,7 @@ export class SignUploadDto {
     description: '文件 MIME type，需要命中服务端白名单',
     example: 'image/webp',
     maxLength: 100,
-    enum: [
-      'image/jpeg',
-      'image/png',
-      'image/webp',
-      'image/gif',
-      'image/tiff',
-      'video/mp4',
-      'video/quicktime',
-      'application/fits',
-      'application/x-fits',
-    ],
+    enum: ALLOWED_UPLOAD_CONTENT_TYPES,
   })
   @IsString()
   @IsNotEmpty()
