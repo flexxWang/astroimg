@@ -1,5 +1,5 @@
 import ExploreSearch from "@/features/explore/components/ExploreSearch";
-import PostFeed from "@/features/posts/components/PostFeed";
+import ExploreHotFeed from "@/features/explore/components/ExploreHotFeed";
 import {
   createEmptyPostFeedPage,
   DEFAULT_POST_FEED_PAGE_SIZE,
@@ -21,12 +21,17 @@ export default async function ExplorePage({
   const page = result.data ?? createEmptyPostFeedPage();
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold">探索社区</h1>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold">探索社区</h1>
+          <p className="text-sm text-muted-foreground">
+            发现正在被讨论的观测记录和创作灵感
+          </p>
+        </div>
         <ExploreSearch />
       </div>
-      <PostFeed
+      <ExploreHotFeed
         initialPage={page}
         pageSize={DEFAULT_POST_FEED_PAGE_SIZE}
         keyword={keyword}

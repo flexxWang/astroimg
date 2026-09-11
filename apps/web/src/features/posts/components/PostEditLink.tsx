@@ -1,15 +1,25 @@
 import Link from "next/link";
 import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
-export default function PostEditLink({ postId }: { postId: string }) {
+export default function PostEditLink({
+  postId,
+  className,
+}: {
+  postId: string;
+  className?: string;
+}) {
   return (
     <Button
       asChild
       type="button"
       variant="secondary"
       size="sm"
-      className="border border-[#d7e7ff] bg-[#f3f8ff] text-[#1772f6] shadow-none transition hover:-translate-y-px hover:border-[#1772f6] hover:bg-[#e8f2ff] hover:text-[#0f67e6] hover:shadow-sm"
+      className={cn(
+        "border border-[#d7e7ff] bg-[#f3f8ff] text-[#1772f6] shadow-none transition hover:-translate-y-px hover:border-[#1772f6] hover:bg-[#e8f2ff] hover:text-[#0f67e6] hover:shadow-sm",
+        className,
+      )}
     >
       <Link href={`/post/${postId}/edit`}>
         <Pencil className="mr-1 size-3.5 transition-transform group-hover/button:rotate-[-8deg]" />
