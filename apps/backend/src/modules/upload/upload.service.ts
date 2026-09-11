@@ -16,6 +16,29 @@ const CONTENT_TYPE_EXTENSIONS: Record<string, string[]> = {
   'video/quicktime': ['.mov', '.qt'],
   'application/fits': ['.fits', '.fit', '.fts'],
   'application/x-fits': ['.fits', '.fit', '.fts'],
+  'application/pdf': ['.pdf'],
+  'application/msword': ['.doc'],
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': [
+    '.docx',
+  ],
+  'application/vnd.ms-excel': ['.xls'],
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': [
+    '.xlsx',
+  ],
+  'application/vnd.ms-powerpoint': ['.ppt'],
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': [
+    '.pptx',
+  ],
+  'text/plain': ['.txt', '.log'],
+  'text/csv': ['.csv'],
+  'text/markdown': ['.md', '.markdown'],
+  'application/json': ['.json'],
+  'application/zip': ['.zip'],
+  'application/x-zip-compressed': ['.zip'],
+  'application/x-rar-compressed': ['.rar'],
+  'application/vnd.rar': ['.rar'],
+  'application/x-7z-compressed': ['.7z'],
+  'application/octet-stream': ['.zip', '.rar', '.7z'],
 };
 
 @Injectable()

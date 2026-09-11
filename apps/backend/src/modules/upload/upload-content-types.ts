@@ -1,0 +1,31 @@
+export const ALLOWED_UPLOAD_CONTENT_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/tiff',
+  'video/mp4',
+  'video/quicktime',
+  'application/fits',
+  'application/x-fits',
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'text/plain',
+  'text/csv',
+  'text/markdown',
+  'application/json',
+  'application/zip',
+  'application/x-zip-compressed',
+  'application/x-rar-compressed',
+  'application/vnd.rar',
+  'application/x-7z-compressed',
+  'application/octet-stream',
+] as const;
+
+export const DEFAULT_UPLOAD_ALLOWED_CONTENT_TYPES =
+  ALLOWED_UPLOAD_CONTENT_TYPES.join(',');
