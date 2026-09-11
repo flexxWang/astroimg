@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
-import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
+import { useEffect, useMemo, useRef } from "react";
+import { MapContainer, Marker, Popup, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
 import { useQuery } from "@tanstack/react-query";
 import { fetchObservationPoints } from "@/features/observations/services/observationApi";
@@ -19,6 +19,48 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
+const BUILDING_LEVEL_ZOOM = 18;
+const DEFAULT_CENTER: [number, number] = [31.2304, 121.4737];
+
+function CurrentLocationView({ fallbackCenter }: { fallbackCenter: [number, number] }) {
+  const map = useMap();
+  const hasLocated = useRef(false);
+
+  useEffect(() => {
+    if (hasLocated.current) return;
+    hasLocated.current = true;
+
+    map.setView(fallbackCenter, BUILDING_LEVEL_ZOOM);
+
+    if (!navigator.geolocation) return;
+
+    let cancelled = false;
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (cancelled) return;
+
+        map.setView(
+          [position.coords.latitude, position.coords.longitude],
+          BUILDING_LEVEL_ZOOM,
+        );
+      },
+      undefined,
+      {
+        enableHighAccuracy: true,
+        maximumAge: 60_000,
+        timeout: 10_000,
+      },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fallbackCenter, map]);
+
+  return null;
+}
+
 export default function ObservationMap() {
   const { data } = useQuery({
     queryKey: queryKeys.observations.points(),
@@ -30,7 +72,7 @@ export default function ObservationMap() {
     if (points.length > 0) {
       return [points[0].latitude, points[0].longitude] as [number, number];
     }
-    return [31.2304, 121.4737] as [number, number];
+    return DEFAULT_CENTER;
   }, [points]);
 
   const bounds = useMemo(() => L.latLngBounds([-85, -180], [85, 180]), []);
@@ -39,13 +81,14 @@ export default function ObservationMap() {
     <div className="h-[calc(100vh-230px)] overflow-hidden rounded-2xl border bg-white/80 shadow-sm">
       <MapContainer
         center={center}
-        zoom={4}
+        zoom={BUILDING_LEVEL_ZOOM}
         minZoom={2}
         maxBounds={bounds}
         maxBoundsViscosity={1.0}
         className="h-full w-full"
         scrollWheelZoom
       >
+        <CurrentLocationView fallbackCenter={center} />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

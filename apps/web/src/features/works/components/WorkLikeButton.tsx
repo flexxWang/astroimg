@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { syncWorkLikeState } from "@/features/works/workCache";
 import { fetchWorkLikeStatus, toggleWorkLike } from "@/features/works/services/workLikeApi";
@@ -48,6 +49,7 @@ export default function WorkLikeButton({
       onClick={handleToggle}
       disabled={toggleLikeMutation.isPending}
     >
+      <Heart className={liked ? "size-4 fill-current" : "size-4"} />
       {liked ? "已点赞" : "点赞"} {count}
     </Button>
   );

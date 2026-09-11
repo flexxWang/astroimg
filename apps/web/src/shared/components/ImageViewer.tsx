@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 
 export default function ImageViewer({
   open,
@@ -26,9 +27,18 @@ export default function ImageViewer({
     return () => window.removeEventListener("keydown", handler);
   }, [images.length, index, onChange, onClose, open]);
 
+  useEffect(() => {
+    if (!open) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [open]);
+
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6"
       onClick={onClose}
@@ -41,26 +51,25 @@ export default function ImageViewer({
           alt="预览"
           className="max-h-[80vh] w-auto rounded-2xl object-contain shadow-2xl"
         />
-        <button
-          type="button"
-          className="absolute right-3 top-3 rounded-full bg-black/60 px-3 py-1 text-xs text-white"
-          onClick={onClose}
-        >
-          关闭
-        </button>
         {images.length > 1 ? (
           <>
             <button
               type="button"
-              className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/60 px-3 py-2 text-white"
-              onClick={() => onChange(Math.max(index - 1, 0))}
+              className="fixed left-5 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-xl text-white shadow-lg backdrop-blur transition hover:bg-white/25 sm:left-8"
+              onClick={(event) => {
+                event.stopPropagation();
+                onChange(Math.max(index - 1, 0));
+              }}
             >
               ←
             </button>
             <button
               type="button"
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/60 px-3 py-2 text-white"
-              onClick={() => onChange(Math.min(index + 1, images.length - 1))}
+              className="fixed right-5 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-xl text-white shadow-lg backdrop-blur transition hover:bg-white/25 sm:right-8"
+              onClick={(event) => {
+                event.stopPropagation();
+                onChange(Math.min(index + 1, images.length - 1));
+              }}
             >
               →
             </button>
@@ -70,6 +79,17 @@ export default function ImageViewer({
           {index + 1} / {images.length}
         </div>
       </div>
-    </div>
+      <button
+        type="button"
+        className="fixed right-5 top-5 inline-flex h-9 items-center justify-center rounded-full bg-white/15 px-3 text-xs font-medium text-white shadow-lg backdrop-blur transition hover:bg-white/25 sm:right-8 sm:top-8"
+        onClick={(event) => {
+          event.stopPropagation();
+          onClose();
+        }}
+      >
+        关闭
+      </button>
+    </div>,
+    document.body,
   );
 }
