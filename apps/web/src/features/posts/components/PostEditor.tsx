@@ -52,6 +52,8 @@ import { signUpload, uploadFile } from "@/features/uploads/services/uploadApi";
 import { cn } from "@/lib/utils";
 
 const MAX_CHARS = 2000;
+const IMAGE_MAX_DISPLAY_WIDTH = 720;
+const IMAGE_MAX_DISPLAY_HEIGHT = 640;
 const TOOLBAR_GROUP_DIVIDER =
   "after:mx-1 after:h-6 after:w-px after:bg-[#eef0f4] after:content-['']";
 
@@ -68,6 +70,46 @@ type EditorDialog = "link" | "video" | "attachment" | "formula" | "table" | null
 type MediaNodeViewProps = ReactNodeViewProps & {
   kind: "image" | "video" | "attachment";
 };
+
+type ImageDimensions = {
+  width: number;
+  height: number;
+};
+
+function getImageDisplaySize(
+  dimensions: ImageDimensions | null,
+): ImageDimensions | null {
+  if (!dimensions?.width || !dimensions.height) return null;
+  const scale = Math.min(
+    IMAGE_MAX_DISPLAY_WIDTH / dimensions.width,
+    IMAGE_MAX_DISPLAY_HEIGHT / dimensions.height,
+    1,
+  );
+  return {
+    width: Math.round(dimensions.width * scale),
+    height: Math.round(dimensions.height * scale),
+  };
+}
+
+function readImageDimensions(file: File) {
+  return new Promise<ImageDimensions>((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      const dimensions = {
+        width: image.naturalWidth,
+        height: image.naturalHeight,
+      };
+      URL.revokeObjectURL(objectUrl);
+      resolve(dimensions);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error("Unable to read image dimensions."));
+    };
+    image.src = objectUrl;
+  });
+}
 
 function MediaDeleteConfirm({
   kind,
@@ -151,10 +193,20 @@ function MediaNodeView(props: MediaNodeViewProps) {
     alt?: string;
     title?: string;
     name?: string;
+    originalWidth?: number | string | null;
+    originalHeight?: number | string | null;
   };
   const label = attrs.title || attrs.name || attrs.alt || "附件";
   const src = attrs.src || attrs.href || "";
   const showDelete = active || selected || confirming;
+  const originalDimensions =
+    attrs.originalWidth && attrs.originalHeight
+      ? {
+          width: Number(attrs.originalWidth),
+          height: Number(attrs.originalHeight),
+        }
+      : null;
+  const displaySize = getImageDisplaySize(originalDimensions);
 
   if (kind === "image") {
     return (
@@ -168,7 +220,14 @@ function MediaNodeView(props: MediaNodeViewProps) {
         }}
         tabIndex={0}
       >
-        <span className="relative inline-block max-w-full align-top">
+        <span
+          className="relative inline-block align-top"
+          style={
+            displaySize
+              ? { width: `min(100%, ${displaySize.width}px)` }
+              : undefined
+          }
+        >
           {showDelete ? (
             <MediaDeleteButton onClick={() => setConfirming(true)} />
           ) : null}
@@ -181,7 +240,15 @@ function MediaNodeView(props: MediaNodeViewProps) {
           ) : null}
           {/* Rich text image URLs are user-uploaded editor content. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt={attrs.alt || "图片"} title={attrs.title || ""} />
+          <img
+            src={src}
+            alt={attrs.alt || "图片"}
+            title={attrs.title || ""}
+            width={displaySize?.width}
+            height={displaySize?.height}
+            data-original-width={originalDimensions?.width}
+            data-original-height={originalDimensions?.height}
+          />
         </span>
       </NodeViewWrapper>
     );
@@ -234,6 +301,8 @@ const MediaImage = Node.create({
       src: { default: null },
       alt: { default: "" },
       title: { default: "" },
+      originalWidth: { default: null },
+      originalHeight: { default: null },
     };
   },
   parseHTML() {
@@ -248,6 +317,12 @@ const MediaImage = Node.create({
             src: image.getAttribute("src"),
             alt: image.getAttribute("alt") ?? "",
             title: image.getAttribute("title") ?? "",
+            originalWidth:
+              image.getAttribute("data-original-width") ??
+              image.getAttribute("width"),
+            originalHeight:
+              image.getAttribute("data-original-height") ??
+              image.getAttribute("height"),
           };
         },
       },
@@ -255,11 +330,30 @@ const MediaImage = Node.create({
     ];
   },
   renderHTML({ HTMLAttributes }) {
-    const { src, alt, title } = HTMLAttributes;
+    const { src, alt, title, originalWidth, originalHeight } = HTMLAttributes;
+    const displaySize = getImageDisplaySize(
+      originalWidth && originalHeight
+        ? {
+            width: Number(originalWidth),
+            height: Number(originalHeight),
+          }
+        : null,
+    );
     return [
       "figure",
       { "data-type": "image" },
-      ["img", mergeAttributes({ src, alt, title })],
+      [
+        "img",
+        mergeAttributes({
+          src,
+          alt,
+          title,
+          width: displaySize?.width,
+          height: displaySize?.height,
+          "data-original-width": originalWidth,
+          "data-original-height": originalHeight,
+        }),
+      ],
     ];
   },
   addNodeView() {
@@ -802,6 +896,7 @@ export default function PostEditor({
     try {
       const blocks: Parameters<Editor["commands"]["insertContent"]>[0][] = [];
       for (const file of files) {
+        const dimensions = await readImageDimensions(file);
         const signed = await signUpload(file.name, file.type, file.size);
         await uploadFile(signed.data, file);
         blocks.push({
@@ -810,6 +905,8 @@ export default function PostEditor({
             src: signed.data.fileUrl,
             alt: file.name,
             title: "",
+            originalWidth: dimensions.width,
+            originalHeight: dimensions.height,
           },
         });
       }

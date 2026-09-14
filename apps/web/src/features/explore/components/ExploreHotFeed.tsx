@@ -13,7 +13,7 @@ import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
 import PostEditLink from "@/features/posts/components/PostEditLink";
 import UserAvatar from "@/shared/components/UserAvatar";
 import ContentThumbnail from "@/shared/components/ContentThumbnail";
-import { excerpt, firstImageSrc } from "@/lib/format";
+import { firstImageSrc, stripHtml } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { Paginated } from "@/lib/types";
 
@@ -145,7 +145,14 @@ export default function ExploreHotFeed({
           const thumbnail = firstImageSrc(post.content);
           return (
             <li key={post.id} className="group">
-              <div className="grid gap-4 px-4 py-4 transition hover:bg-slate-50/90 sm:grid-cols-[3rem_minmax(0,1fr)_8.5rem] sm:px-5">
+              <div
+                className={cn(
+                  "grid gap-4 px-4 py-4 transition hover:bg-slate-50/90 sm:px-5",
+                  thumbnail
+                    ? "sm:grid-cols-[3rem_minmax(0,1fr)_8.5rem]"
+                    : "sm:grid-cols-[3rem_minmax(0,1fr)]",
+                )}
+              >
                 <div
                   className={cn(
                     "pt-0.5 text-center text-xl font-semibold tabular-nums text-muted-foreground sm:text-2xl",
@@ -167,9 +174,14 @@ export default function ExploreHotFeed({
 
                   <Link
                     href={`/post/${post.id}`}
-                    className="block text-sm leading-6 text-muted-foreground line-clamp-2 group-hover:text-slate-600"
+                    className="max-h-12 overflow-hidden text-sm leading-6 text-muted-foreground group-hover:text-slate-600"
+                    style={{
+                      display: "-webkit-box",
+                      WebkitBoxOrient: "vertical",
+                      WebkitLineClamp: 2,
+                    }}
                   >
-                    {highlightText(excerpt(post.content, 104), keyword)}
+                    {highlightText(stripHtml(post.content), keyword)}
                   </Link>
 
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">

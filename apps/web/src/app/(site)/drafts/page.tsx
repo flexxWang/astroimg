@@ -9,7 +9,7 @@ import { removeDraftFromCache } from "@/features/drafts/draftCache";
 import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
 import { fetchDrafts, publishDraft } from "@/features/drafts/services/draftApi";
 import ContentThumbnail from "@/shared/components/ContentThumbnail";
-import { excerpt, firstImageSrc } from "@/lib/format";
+import { firstImageSrc, stripHtml } from "@/lib/format";
 import { queryKeys } from "@/lib/queryKeys";
 import { Button } from "@/components/ui/button";
 
@@ -91,7 +91,13 @@ export default function DraftListPage() {
           <ol className="divide-y">
             {drafts.map((draft) => (
               <li key={draft.id} className="group">
-                <div className="grid gap-4 px-4 py-4 transition hover:bg-slate-50/90 sm:grid-cols-[minmax(0,1fr)_8.5rem] sm:px-5">
+                <div
+                  className={
+                    firstImageSrc(draft.content || "")
+                      ? "grid gap-4 px-4 py-4 transition hover:bg-slate-50/90 sm:grid-cols-[minmax(0,1fr)_8.5rem] sm:px-5"
+                      : "grid gap-4 px-4 py-4 transition hover:bg-slate-50/90 sm:px-5"
+                  }
+                >
                   <div className="min-w-0 space-y-2">
                     <Link
                       href={`/drafts/${draft.id}`}
@@ -101,9 +107,14 @@ export default function DraftListPage() {
                     </Link>
                     <Link
                       href={`/drafts/${draft.id}`}
-                      className="block text-sm leading-6 text-muted-foreground line-clamp-2 group-hover:text-slate-600"
+                      className="max-h-12 overflow-hidden text-sm leading-6 text-muted-foreground group-hover:text-slate-600"
+                      style={{
+                        display: "-webkit-box",
+                        WebkitBoxOrient: "vertical",
+                        WebkitLineClamp: 2,
+                      }}
                     >
-                      {excerpt(draft.content || "", 104) || "还没有正文内容"}
+                      {stripHtml(draft.content || "") || "还没有正文内容"}
                     </Link>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
                       <span className="inline-flex items-center gap-1">

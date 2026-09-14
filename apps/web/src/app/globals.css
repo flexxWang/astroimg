@@ -219,10 +219,14 @@
 
 .ProseMirror figure[data-type="image"] {
   margin: 1.25rem 0;
+  max-width: 100%;
+  overflow-x: visible;
 }
 
 .ProseMirror figure[data-type="image"] img {
+  display: block;
   max-width: 100%;
+  height: auto;
   border-radius: 6px;
   border: 1px solid #e7eaf0;
 }
@@ -373,10 +377,14 @@
 
 .rich-content figure[data-type="image"] {
   margin: 1.25rem 0;
+  max-width: 100%;
+  overflow-x: visible;
 }
 
 .rich-content figure[data-type="image"] img {
+  display: block;
   max-width: 100%;
+  height: auto;
   border-radius: 6px;
   border: 1px solid #e7eaf0;
 }

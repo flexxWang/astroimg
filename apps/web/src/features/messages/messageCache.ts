@@ -1,5 +1,6 @@
 import type { InfiniteData, QueryClient } from "@tanstack/react-query";
 import type { ConversationItem, MessageItem } from "@/features/messages/services/messageApi";
+import { formatMessagePreview } from "@/features/messages/messageContent";
 import { queryKeys } from "@/lib/queryKeys";
 
 export function appendMessageToThreadCache(
@@ -62,7 +63,7 @@ export function syncConversationPreview(
         const existing = current[existingIndex];
         const nextConversation: ConversationItem = {
           ...existing,
-          lastMessage: message.content,
+          lastMessage: formatMessagePreview(message.content),
           unreadCount: options?.unreadCount ?? existing.unreadCount ?? 0,
           updatedAt: message.createdAt ?? existing.updatedAt,
         };
@@ -81,7 +82,7 @@ export function syncConversationPreview(
       return [
         {
           id: message.conversationId,
-          lastMessage: message.content,
+          lastMessage: formatMessagePreview(message.content),
           otherUserId: options.otherUserId,
           otherUsername: options.otherUsername,
           unreadCount: options.unreadCount ?? 0,

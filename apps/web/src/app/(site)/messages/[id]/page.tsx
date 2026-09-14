@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 import {
   markConversationRead,
@@ -12,6 +13,7 @@ import {
   appendMessageToThreadCache,
   syncConversationPreview,
 } from "@/features/messages/messageCache";
+import { parseMessageContent } from "@/features/messages/messageContent";
 import { useCurrentUser } from "@/features/users/hooks/useCurrentUser";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -56,11 +58,13 @@ export default function MessageThreadPage() {
     }
   }, [conversationId, user]);
 
-  const recipientId = useMemo(() => {
-    const first = messages[0];
-    if (!first || !user) return null;
-    return first.senderId === user.id ? first.recipientId : first.senderId;
-  }, [messages, user]);
+  const firstMessage = messages[0];
+  const recipientId =
+    firstMessage && user
+      ? firstMessage.senderId === user.id
+        ? firstMessage.recipientId
+        : firstMessage.senderId
+      : null;
 
   if (!authBootstrapComplete || !user) return null;
 
@@ -76,24 +80,49 @@ export default function MessageThreadPage() {
         <div className="text-sm text-muted-foreground">加载中...</div>
       ) : (
         <div className="space-y-3 rounded-2xl border bg-white/80 p-4">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex ${
-                msg.senderId === user.id ? "justify-end" : "justify-start"
-              }`}
-            >
+          {messages.map((msg) => {
+            const parsed = parseMessageContent(msg.content);
+            return (
               <div
-                className={`max-w-[70%] rounded-2xl px-4 py-2 text-sm ${
-                  msg.senderId === user.id
-                    ? "bg-slate-900 text-white"
-                    : "bg-slate-100 text-slate-900"
+                key={msg.id}
+                className={`flex ${
+                  msg.senderId === user.id ? "justify-end" : "justify-start"
                 }`}
               >
-                {msg.content}
+                <div
+                  className={`max-w-[70%] space-y-2 rounded-2xl px-4 py-2 text-sm ${
+                    msg.senderId === user.id
+                      ? "bg-slate-900 text-white"
+                      : "bg-slate-100 text-slate-900"
+                  }`}
+                >
+                  {parsed.text ? (
+                    <div className="whitespace-pre-wrap break-words">
+                      {parsed.text}
+                    </div>
+                  ) : null}
+                  {parsed.images.map((image) => (
+                    <a
+                      key={image.url}
+                      href={image.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block overflow-hidden rounded-lg bg-black/5"
+                    >
+                      <Image
+                        src={image.url}
+                        alt={image.name || "消息图片"}
+                        width={288}
+                        height={288}
+                        unoptimized
+                        className="max-h-72 w-full object-cover"
+                      />
+                    </a>
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

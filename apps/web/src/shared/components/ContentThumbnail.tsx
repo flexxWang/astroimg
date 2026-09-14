@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ContentThumbnailProps {
@@ -21,11 +20,7 @@ export default function ContentThumbnail({
   );
 
   if (!src) {
-    return (
-      <div className={cn(frameClassName, "flex items-center justify-center text-slate-300")}>
-        <ImageIcon className="size-6" />
-      </div>
-    );
+    return null;
   }
 
   return (
