@@ -42,15 +42,15 @@ export function getSocket() {
 
   if (process.env.NODE_ENV === "development") {
     socket.on("connect", () => {
-      // eslint-disable-next-line no-console
+       
       console.info("[socket] connected", socket?.id);
     });
     socket.on("connect_error", (error) => {
-      // eslint-disable-next-line no-console
+       
       console.warn("[socket] connect_error", error.message);
     });
     socket.on("disconnect", (reason) => {
-      // eslint-disable-next-line no-console
+       
       console.info("[socket] disconnected", reason);
     });
   }

@@ -207,7 +207,7 @@ function MessagesPageContent() {
           .then(() =>
             clearConversationUnread(queryClient, user.id, selectedConversationId),
           )
-          .catch(() => {});
+          .catch(() => { });
       }
     };
     const readHandler = (payload: { conversationId?: string }) => {
@@ -235,7 +235,7 @@ function MessagesPageContent() {
       .then(() =>
         clearConversationUnread(queryClient, user.id, selectedConversationId),
       )
-      .catch(() => {});
+      .catch(() => { });
   }, [queryClient, selectedConversationId, user]);
 
   const { data: searchResults = [] } = useQuery({
@@ -337,18 +337,18 @@ function MessagesPageContent() {
   const canCompose = Boolean(recipientOverride || activeConversation);
   const emptyState = !selectedConversationId
     ? {
-        title: "还没有打开会话",
-        description: "从左侧选择一个会话，或搜索用户发起新的私信。",
-      }
+      title: "还没有打开会话",
+      description: "从左侧选择一个会话，或搜索用户发起新的私信。",
+    }
     : debouncedMessageSearch.length > 0
       ? {
-          title: "没有找到消息",
-          description: "换个关键词试试，或清空搜索返回完整会话。",
-        }
+        title: "没有找到消息",
+        description: "换个关键词试试，或清空搜索返回完整会话。",
+      }
       : {
-          title: "暂无消息",
-          description: "发送第一条消息，图片和表情也可以直接从输入框上方添加。",
-        };
+        title: "暂无消息",
+        description: "发送第一条消息，图片和表情也可以直接从输入框上方添加。",
+      };
 
   return (
     <div className="h-[calc(100vh-9rem)] min-h-[620px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
